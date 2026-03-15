@@ -1,9 +1,9 @@
 {
 	"schemaVersion": 1,
-	"id": "modid",
-	"version": "${version}",
-	"name": "Example mod",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"id": "bettermateriallist",
+	"version": "1.0.0",
+	"name": "Better Material List",
+	"description": "Enhanced Litematica material list with checkboxes to track collected items.",
 	"authors": [
 		"Me!"
 	],
@@ -33,9 +33,8 @@
 		"fabricloader": ">=0.18.2",
 		"minecraft": "~1.21.11",
 		"java": ">=21",
-		"fabric-api": "*"
-	},
-	"suggests": {
-		"another-mod": "*"
+		"fabric-api": "*",
+		"malilib": "*",
+		"litematica": "*"
 	}
 }

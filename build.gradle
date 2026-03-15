@@ -34,7 +34,7 @@ loom {
 	splitEnvironmentSourceSets()
 
 	mods {
-		"modid" {
+		"bettermateriallist" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}
