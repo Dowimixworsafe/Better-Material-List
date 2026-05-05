@@ -14,6 +14,7 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
+import fi.dy.masa.malilib.render.GuiContext;
 
 @Environment(EnvType.CLIENT)
 public class GuiBetterMaterialList
@@ -257,10 +258,9 @@ public class GuiBetterMaterialList
 
             // 3. Informujemy gracza
             if (net.minecraft.client.Minecraft.getInstance().player != null) {
-                net.minecraft.client.Minecraft.getInstance().player.displayClientMessage(
+                net.minecraft.client.Minecraft.getInstance().player.sendSystemMessage(
                         net.minecraft.network.chat.Component.literal(
-                                "§a[BML] Cache wyczyszczony! Użyj przycisku 'Odśwież', aby przeliczyć na nowo."),
-                        false);
+                                "§a[BML] Cache wyczyszczony! Użyj przycisku 'Odśwież', aby przeliczyć na nowo."));
             }
         });
 
@@ -327,10 +327,10 @@ public class GuiBetterMaterialList
     }
 
     @Override
-    public void render(net.minecraft.client.gui.GuiGraphics drawContext, int mouseX, int mouseY, float partialTicks) {
+    public void drawContents(GuiContext guiContext, int mouseX, int mouseY, float partialTicks) {
         this.lastMouseX = mouseX;
         this.lastMouseY = mouseY;
-        super.render(drawContext, mouseX, mouseY, partialTicks);
+        super.drawContents(guiContext, mouseX, mouseY, partialTicks);
 
         int guiWidth = Math.max(600, (int) (this.getScreenWidth() * 0.9));
         guiWidth = Math.min(guiWidth, this.getScreenWidth() - 20);
@@ -378,33 +378,33 @@ public class GuiBetterMaterialList
             String storedStr = "Stored" + (currentSortMode == SortMode.STORED ? arrow : "");
             String missingStr = "Missing" + (currentSortMode == SortMode.MISSING ? arrow : "");
 
-            drawContext.drawString(font, blockStr, x + NAME_OFFSET_X, startY,
+            guiContext.drawString(font, blockStr, x + NAME_OFFSET_X, startY,
                     currentSortMode == SortMode.BLOCK ? 0xFFFFAA00 : 0xFFFFFFFF, false);
-            drawContext.drawString(font, reqStr, totalStart + 2, startY,
+            guiContext.drawString(font, reqStr, totalStart + 2, startY,
                     currentSortMode == SortMode.REQUIRED ? 0xFFFFAA00 : 0xFFAAAAAA, false);
-            drawContext.drawString(font, placedStr, placedStart + 2, startY,
+            guiContext.drawString(font, placedStr, placedStart + 2, startY,
                     currentSortMode == SortMode.PLACED ? 0xFFFFAA00 : 0xFFFFFFFF, false);
-            drawContext.drawString(font, storedStr, availableStart + 2, startY,
+            guiContext.drawString(font, storedStr, availableStart + 2, startY,
                     currentSortMode == SortMode.STORED ? 0xFFFFAA00 : 0xFFFFFFFF, false);
-            drawContext.drawString(font, missingStr, missingStart + 2, startY,
+            guiContext.drawString(font, missingStr, missingStart + 2, startY,
                     currentSortMode == SortMode.MISSING ? 0xFFFFAA00 : 0xFFFFFFFF, false);
         }
 
         if (this.materialList == null || this.materialList.isEmpty()) {
             String text = "Nie wybrano schematu Litematiki";
             int textWidth = font.width(text);
-            drawContext.drawString(font, text, startX + (guiWidth - textWidth) / 2, startY + 50, 0xFFFF5555, false);
+            guiContext.drawString(font, text, startX + (guiWidth - textWidth) / 2, startY + 50, 0xFFFF5555, false);
         }
 
         if (this.searchField != null) {
-            this.searchField.render(drawContext, mouseX, mouseY, partialTicks);
+            this.searchField.extractWidgetRenderState(guiContext, mouseX, mouseY, partialTicks);
         }
 
         if (this.btnPlacedCheck != null) {
-            drawContext.renderItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.GRASS_BLOCK), this.btnPlacedCheck.getX() + 4, this.btnPlacedCheck.getY() + 2);
+            guiContext.renderItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.GRASS_BLOCK), this.btnPlacedCheck.getX() + 4, this.btnPlacedCheck.getY() + 2);
         }
         if (this.btnStoredCheck != null) {
-            drawContext.renderItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.CHEST), this.btnStoredCheck.getX() + 4, this.btnStoredCheck.getY() + 2);
+            guiContext.renderItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.CHEST), this.btnStoredCheck.getX() + 4, this.btnStoredCheck.getY() + 2);
         }
     }
 

@@ -127,7 +127,7 @@ public class PartyManager {
         String msg = json.get("message").getAsString();
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            mc.player.displayClientMessage(Component.literal("§c[BML] " + msg), false);
+            mc.player.sendSystemMessage(Component.literal("§c[BML] " + msg));
         }
     }
 
@@ -146,11 +146,9 @@ public class PartyManager {
         // Pokaż graczowi powiadomienie w stylu action bar (nie chat!)
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            mc.player.displayClientMessage(
+            mc.player.sendSystemMessage(
                 Component.literal("§a[BML] §e" + fromNick + " §azaprasza Cię do party! " +
-                    "§7(Otwórz GUI BML → Party lub naciśnij O, aby zaakceptować)"),
-                true // true = action bar, nie chat
-            );
+                    "§7(Otwórz GUI BML → Party lub naciśnij O, aby zaakceptować)"));
         }
         refreshGui();
     }
@@ -177,7 +175,7 @@ public class PartyManager {
         refreshGui();
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            mc.player.displayClientMessage(Component.literal("§c[BML] Zostałeś rozłączony z Party."), true);
+            mc.player.sendSystemMessage(Component.literal("§c[BML] Zostałeś rozłączony z Party."));
         }
     }
 

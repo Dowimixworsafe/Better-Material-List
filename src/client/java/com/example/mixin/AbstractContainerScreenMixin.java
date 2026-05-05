@@ -153,14 +153,14 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
         this.addRenderableWidget(this.bml_TrackingButtonInstance);
     }
 
-    @Inject(method = "render", at = @At("TAIL"))
-    public void onRender(net.minecraft.client.gui.GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+    @Inject(method = "extractRenderState", at = @At("TAIL"))
+    public void onRender(net.minecraft.client.gui.GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         if (this.bml_TrackingButtonInstance != null && this.bml_TrackingButtonInstance.visible) {
             String cid = getContainerId();
             if (cid != null) {
                 boolean isMarked = ContainerDataManager.isContainerMarked(getActivePlacementName(), cid);
                 if (isMarked) {
-                    guiGraphics.renderItem(new ItemStack(net.minecraft.world.item.Items.REDSTONE_TORCH), this.bml_TrackingButtonInstance.getX() + 2, this.bml_TrackingButtonInstance.getY() + 2);
+                    guiGraphics.item(new ItemStack(net.minecraft.world.item.Items.REDSTONE_TORCH), this.bml_TrackingButtonInstance.getX() + 2, this.bml_TrackingButtonInstance.getY() + 2);
                 }
             }
         }

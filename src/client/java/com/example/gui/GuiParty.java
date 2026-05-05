@@ -10,15 +10,16 @@ import fi.dy.masa.malilib.gui.button.IButtonActionListener;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
+import fi.dy.masa.malilib.render.GuiContext;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import net.minecraft.client.multiplayer.PlayerInfo;
-import net.minecraft.client.gui.components.PlayerFaceRenderer;
+import net.minecraft.client.gui.components.PlayerFaceExtractor;
 import net.minecraft.resources.Identifier;
 
 @Environment(EnvType.CLIENT)
@@ -227,8 +228,9 @@ public class GuiParty extends GuiBase {
     }
 
     @Override
-    public void render(GuiGraphics drawContext, int mouseX, int mouseY, float partialTicks) {
-        super.render(drawContext, mouseX, mouseY, partialTicks);
+    public void extractRenderState(GuiGraphicsExtractor drawContext, int mouseX, int mouseY, float partialTicks) {
+        super.extractRenderState(drawContext, mouseX, mouseY, partialTicks);
+        GuiContext ctx = GuiContext.fromGuiGraphics(drawContext);
 
         int startX = (this.width - 460) / 2;
         int startY = 40;
@@ -236,48 +238,45 @@ public class GuiParty extends GuiBase {
         int currentY = startY + 40;
 
         if (this.syncIdField != null) {
-            this.syncIdField.render(drawContext, mouseX, mouseY, partialTicks);
-            drawContext.drawString(this.font, "Synchronizowane schematy:", startX, startY - 20, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, "Synchronizowane schematy:", startX, startY - 20, 0xFFFFFFFF, false);
         }
 
         if (!BmlClientNetworking.serverSupported) {
-            drawContext.drawString(this.font, "§cSerwer nie obsługuje BML Party/Sync.", startX, currentY, 0xFFFFFFFF, false);
-            drawContext.drawString(this.font, "§7Poproś administratora o zainstalowanie modu lub pluginu BetterMaterialList.", startX, currentY + 15, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, "§cSerwer nie obsługuje BML Party/Sync.", startX, currentY, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, "§7Poproś administratora o zainstalowanie modu lub pluginu BetterMaterialList.", startX, currentY + 15, 0xFFFFFFFF, false);
             return;
         }
 
         if (PartyManager.isInParty()) {
             String adminNick = PartyManager.getAdminNick();
             String partyName = adminNick != null ? "Party gracza " + adminNick : "Jesteś w Party!";
-            drawContext.drawString(this.font, "§a" + partyName, startX, currentY, 0xFFFFFFFF, false);
-            drawContext.drawString(this.font, "§7Członkowie:", startX, currentY + 15, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, "§a" + partyName, startX, currentY, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, "§7Członkowie:", startX, currentY + 15, 0xFFFFFFFF, false);
 
             List<String> members = PartyManager.getMembers();
             int memY = currentY + 30;
             for (String member : members) {
                 String suffix = (adminNick != null && member.equals(adminNick)) ? " §e(Admin)" : "";
-                drawContext.drawString(this.font, " - " + member + suffix, startX, memY, 0xFFFFEAA0, false);
+                ctx.drawString(this.font, " - " + member + suffix, startX, memY, 0xFFFFEAA0, false);
                 memY += 20;
             }
             
             currentY = memY + 10 + 30 + 35; // +10 (leave btn Y), +30 (invite field Y), +35 (space after input)
         } else {
-            drawContext.drawString(this.font, "§7Nie jesteś w żadnym Party.", startX, currentY, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, "§7Nie jesteś w żadnym Party.", startX, currentY, 0xFFFFFFFF, false);
             currentY += 40;
         }
 
-        if (this.inviteField != null) {
-            this.inviteField.render(drawContext, mouseX, mouseY, partialTicks);
-        }
+        // inviteField is rendered automatically via addRenderableWidget
 
         // Render zaproszeń (Lewa kolumna)
         int leftX = Math.max(10, startX - 220);
         int invY = startY + 15;
         List<PartyManager.PendingInvite> invites = PartyManager.getPendingInvites();
         if (!invites.isEmpty()) {
-            drawContext.drawString(this.font, "§eOczekujące zaproszenia:", leftX, invY - 15, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, "§eOczekujące zaproszenia:", leftX, invY - 15, 0xFFFFFFFF, false);
             for (PartyManager.PendingInvite inv : invites) {
-                drawContext.drawString(this.font, inv.fromNick(), leftX, invY + 5, 0xFFFFFFFF, false);
+                ctx.drawString(this.font, inv.fromNick(), leftX, invY + 5, 0xFFFFFFFF, false);
                 invY += 45;
             }
         }
@@ -292,10 +291,10 @@ public class GuiParty extends GuiBase {
             if (count >= 5) break;
 
             if (!paintedHeader) {
-                drawContext.drawString(this.font, "§bOstatnio w Party:", startX, recentY, 0xFFFFFFFF, false);
+                ctx.drawString(this.font, "§bOstatnio w Party:", startX, recentY, 0xFFFFFFFF, false);
                 paintedHeader = true;
             }
-            drawContext.drawString(this.font, nick, startX, recentY + 15, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, nick, startX, recentY + 15, 0xFFFFFFFF, false);
             recentY += 25;
             count++;
         }
@@ -316,7 +315,7 @@ public class GuiParty extends GuiBase {
                 }
             }
             
-            drawContext.drawString(this.font, "§bGracze Online (" + validPlayers.size() + "):", rightX, rightYLine - 15, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, "§bGracze Online (" + validPlayers.size() + "):", rightX, rightYLine - 15, 0xFFFFFFFF, false);
             
             final int maxPages = Math.max(1, (int) Math.ceil(validPlayers.size() / 10.0));
 
@@ -327,9 +326,9 @@ public class GuiParty extends GuiBase {
                 PlayerInfo info = validPlayers.get(i);
                 String pName = info.getProfile().name();
                 
-                PlayerFaceRenderer.draw(drawContext, info.getSkin(), rightX, rightYLine - 2, 8);
+                PlayerFaceExtractor.extractRenderState(drawContext, info.getSkin(), rightX, rightYLine - 2, 8);
                 
-                drawContext.drawString(this.font, pName, rightX + 12, rightYLine - 2, 0xFFFFFFFF, false);
+                ctx.drawString(this.font, pName, rightX + 12, rightYLine - 2, 0xFFFFFFFF, false);
                 
                 rightYLine += 25;
             }
@@ -337,10 +336,10 @@ public class GuiParty extends GuiBase {
             if (maxPages > 1) {
                 String pageStr = (onlinePlayersPage + 1) + " / " + maxPages;
                 int strWidth = this.font.width(pageStr);
-                drawContext.drawString(this.font, pageStr, rightX + 67 - strWidth / 2, startY + 301, 0xFFFFFFFF, false);
+                ctx.drawString(this.font, pageStr, rightX + 67 - strWidth / 2, startY + 301, 0xFFFFFFFF, false);
             }
         } else {
-            drawContext.drawString(this.font, "§bGracze Online na Serwerze:", rightX, rightYLine - 15, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, "§bGracze Online na Serwerze:", rightX, rightYLine - 15, 0xFFFFFFFF, false);
         }
     }
 

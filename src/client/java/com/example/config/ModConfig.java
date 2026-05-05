@@ -36,7 +36,7 @@ public class ModConfig implements IConfigHandler {
    public void load() {
       File configFile = new File(FabricLoader.getInstance().getConfigDir().toFile(), "bettermateriallist.json");
       if (configFile.exists() && configFile.isFile() && configFile.canRead()) {
-         JsonElement element = JsonUtils.parseJsonFile(configFile);
+         JsonElement element = JsonUtils.parseJsonFile(configFile.toPath());
          if (element != null && element.isJsonObject()) {
             JsonObject root = element.getAsJsonObject();
             if (root.has("Hotkeys")) {
@@ -69,7 +69,7 @@ public class ModConfig implements IConfigHandler {
          }
 
          root.add("Hotkeys", hotkeysObj);
-         JsonUtils.writeJsonToFile(root, new File(dir, "bettermateriallist.json"));
+         JsonUtils.writeJsonToFile(root, new File(dir, "bettermateriallist.json").toPath());
       }
 
    }

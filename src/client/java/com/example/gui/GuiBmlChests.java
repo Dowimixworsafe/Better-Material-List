@@ -3,7 +3,8 @@ package com.example.gui;
 import com.example.data.ContainerDataManager;
 import fi.dy.masa.malilib.gui.GuiBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import fi.dy.masa.malilib.render.GuiContext;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -42,8 +43,8 @@ public class GuiBmlChests extends GuiBase {
             refreshList();
             this.initGui();
             if (this.minecraft != null && this.minecraft.player != null) {
-                this.minecraft.player.displayClientMessage(
-                    Component.literal("§a[BML] Wszystkie skrzynie dla tego schematu zostaly odznaczone."), false);
+                this.minecraft.player.sendSystemMessage(
+                    Component.literal("§a[BML] Wszystkie skrzynie dla tego schematu zostaly odznaczone."));
             }
         });
 
@@ -60,20 +61,20 @@ public class GuiBmlChests extends GuiBase {
     }
 
     @Override
-    public void render(GuiGraphics drawContext, int mouseX, int mouseY, float partialTicks) {
-        super.render(drawContext, mouseX, mouseY, partialTicks);
-        
+    public void extractRenderState(GuiGraphicsExtractor drawContext, int mouseX, int mouseY, float partialTicks) {
+        super.extractRenderState(drawContext, mouseX, mouseY, partialTicks);
+        GuiContext ctx = GuiContext.fromGuiGraphics(drawContext);
+
         int startX = (this.width - 200) / 2;
         int startY = 40;
 
-        drawContext.drawString(this.font, "§eSkrzynie z zaznaczonym BML:", startX, startY, 0xFFFFFFFF, false);
+        ctx.drawString(this.font, "§eSkrzynie z zaznaczonym BML:", startX, startY, 0xFFFFFFFF, false);
         startY += 15;
 
         if (this.coordsList.isEmpty()) {
-            drawContext.drawString(this.font, "§7Brak śledzonych skrzyń dla tego schematu.", startX, startY, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, "§7Brak śledzonych skrzyń dla tego schematu.", startX, startY, 0xFFFFFFFF, false);
         } else {
             for (String coord : this.coordsList) {
-                // Konwersja minecraft:overworld;[10, 64, -20] do przyjaznego formatu
                 String display = coord;
                 if (coord.contains(";")) {
                     String[] parts = coord.split(";");
@@ -81,7 +82,7 @@ public class GuiBmlChests extends GuiBase {
                         display = "§b" + parts[1] + " §8(" + parts[0].replace("minecraft:", "") + ")";
                     }
                 }
-                drawContext.drawString(this.font, display, startX, startY, 0xFFFFFFFF, false);
+                ctx.drawString(this.font, display, startX, startY, 0xFFFFFFFF, false);
                 startY += 12;
             }
         }

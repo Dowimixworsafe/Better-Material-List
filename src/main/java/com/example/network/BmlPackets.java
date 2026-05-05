@@ -1,6 +1,6 @@
 package com.example.network;
 
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
@@ -49,7 +49,7 @@ public class BmlPackets {
         public static final CustomPacketPayload.Type<BmlPayload> TYPE =
             new CustomPacketPayload.Type<>(CHANNEL_ID);
 
-        public static final StreamCodec<FriendlyByteBuf, BmlPayload> CODEC = StreamCodec.of(
+        public static final StreamCodec<RegistryFriendlyByteBuf, BmlPayload> CODEC = StreamCodec.of(
             (buf, payload) -> buf.writeByteArray(payload.data()),
             buf -> new BmlPayload(buf.readByteArray())
         );

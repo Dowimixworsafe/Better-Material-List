@@ -63,10 +63,8 @@ public class PlacementSyncHelper {
         // Powiadom własny chat
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            mc.player.displayClientMessage(
-                Component.literal("§a[BML] §2Wysłano " + sent + " placement(ów) do party."),
-                true
-            );
+            mc.player.sendSystemMessage(
+                Component.literal("§a[BML] §2Wysłano " + sent + " placement(ów) do party."));
         }
     }
 
@@ -163,11 +161,9 @@ public class PlacementSyncHelper {
 
         if (file == null) {
             // Plik nie istnieje — poproś o ręczne skopiowanie
-            mc.player.displayClientMessage(
+            mc.player.sendSystemMessage(
                 Component.literal("§c[BML] §eBrakuje schematu: §f" + schematicName +
-                    " §7– skopiuj plik .litematic do folderu schematics/, a potem wczytaj go w Litematice."),
-                false
-            );
+                    " §7– skopiuj plik .litematic do folderu schematics/, a potem wczytaj go w Litematice."));
         } else {
             try {
                 // Usuń istniejący placement o tej samej nazwie (aby nie duplikować)
@@ -188,19 +184,15 @@ public class PlacementSyncHelper {
                     
                     fi.dy.masa.litematica.data.DataManager.getSchematicPlacementManager().addSchematicPlacement(placement, true);
                     
-                    mc.player.displayClientMessage(
-                        Component.literal("§a[BML Party] Automatycznie załadowano i ustawiono schemat od znajomego: §e" + placementName),
-                        false
-                    );
+                    mc.player.sendSystemMessage(
+                        Component.literal("§a[BML Party] Automatycznie załadowano i ustawiono schemat od znajomego: §e" + placementName));
                 } else {
                      LOGGER.error("Schematic returned null during createFromFile.");
                 }
             } catch (Exception e) {
                 LOGGER.error("[BML-PlacementSync] Błąd auto-placementu: {}", e.getMessage());
-                mc.player.displayClientMessage(
-                    Component.literal("§c[BML] Błąd wczytywania automatycznego z pliku: " + schematicName),
-                    false
-                );
+                mc.player.sendSystemMessage(
+                    Component.literal("§c[BML] Błąd wczytywania automatycznego z pliku: " + schematicName));
             }
         }
     }
