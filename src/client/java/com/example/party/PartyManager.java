@@ -154,6 +154,8 @@ public class PartyManager {
     }
 
     private static void onPartyUpdate(JsonObject json) {
+        boolean wasInParty = (currentPartyId != null);
+
         currentPartyId = UUID.fromString(json.get("partyId").getAsString());
         if (json.has("adminNick")) {
             adminNick = json.get("adminNick").getAsString();
@@ -166,6 +168,16 @@ public class PartyManager {
             addRecentPlayer(nick);
         });
         LOGGER.info("[BML-Party] Party updated: {} admin: {} members: {}", currentPartyId, adminNick, members);
+
+        // Auto-request schematics from party leader when first joining as non-admin
+        String self = getSelfNick();
+        boolean justJoined = !wasInParty && currentPartyId != null;
+        boolean isNotAdmin = self != null && adminNick != null && !self.equalsIgnoreCase(adminNick);
+        if (justJoined && isNotAdmin) {
+            PlacementSyncHelper.requestPlacementsFromPlayer(adminNick);
+            LOGGER.info("[BML-Party] Auto-requesting placements from leader: {}", adminNick);
+        }
+
         refreshGui();
     }
 

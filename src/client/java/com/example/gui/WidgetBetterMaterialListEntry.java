@@ -24,18 +24,6 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
     private String leftItemName;
     private String rightItemName;
 
-    // Layout constants
-    private static final int ICON_SIZE = 16;
-    private static final int ICON_PADDING = 4;
-    private static final int NAME_OFFSET_X = ICON_PADDING + ICON_SIZE + 6;
-    private static final int CHECKBOX_WIDTH = 16;
-    private static final int CHECKBOX_MARGIN = 6;
-    private static final int COLUMN_GAP = 5;
-    private static final int MISSING_WIDTH = 45;
-    private static final int AVAILABLE_WIDTH = 45;
-    private static final int PLACED_WIDTH = 45;
-    private static final int TOTAL_WIDTH = 45;
-
     public WidgetBetterMaterialListEntry(int x, int y, int width, int height, boolean isOdd,
             MaterialListEntryPair entryPair, int listIndex,
             GuiBetterMaterialList parent) {
@@ -51,23 +39,18 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
     }
 
     private void setupLeftEntry(MaterialListEntry entry, int x, int y, int width, int height) {
-        if (entry == null)
-            return;
+        if (entry == null) return;
         ItemStack stack = entry.getStack();
         this.leftItemName = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
 
-        boolean checked = MaterialStateManager.isChecked(parent.getPlacementName(), this.leftItemName);
+        boolean userChecked = MaterialStateManager.isChecked(parent.getPlacementName(), this.leftItemName);
         int actuallyMissing = Math.max(0, entry.getCountMissing() - entry.getCountAvailable());
+        // Three-state glyph: green = user-checked, yellow = auto-fulfilled, red = missing
+        String glyph = userChecked ? "§a✔" : (actuallyMissing <= 0 ? "§e✔" : "§c✖");
 
-        if (actuallyMissing <= 0 && !checked) {
-            checked = true;
-            MaterialStateManager.setChecked(parent.getPlacementName(), this.leftItemName, true);
-        }
-
-        int bx = x + width - CHECKBOX_WIDTH - CHECKBOX_MARGIN;
-        int by = y + (height - CHECKBOX_WIDTH) / 2;
-        this.leftCheckbox = new ButtonGeneric(bx, by, CHECKBOX_WIDTH, CHECKBOX_WIDTH, checked ? "§a✔" : "§c✖",
-                new String[0]);
+        int bx = x + width - BmlLayoutConstants.CHECKBOX_WIDTH - BmlLayoutConstants.CHECKBOX_MARGIN;
+        int by = y + (height - BmlLayoutConstants.CHECKBOX_WIDTH) / 2;
+        this.leftCheckbox = new ButtonGeneric(bx, by, BmlLayoutConstants.CHECKBOX_WIDTH, BmlLayoutConstants.CHECKBOX_WIDTH, glyph, new String[0]);
         this.addButton(this.leftCheckbox, new IButtonActionListener() {
             @Override
             public void actionPerformedWithButton(ButtonBase button, int mouseButton) {
@@ -81,23 +64,17 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
     }
 
     private void setupRightEntry(MaterialListEntry entry, int x, int y, int width, int height) {
-        if (entry == null)
-            return;
+        if (entry == null) return;
         ItemStack stack = entry.getStack();
         this.rightItemName = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
 
-        boolean checked = MaterialStateManager.isChecked(parent.getPlacementName(), this.rightItemName);
+        boolean userChecked = MaterialStateManager.isChecked(parent.getPlacementName(), this.rightItemName);
         int actuallyMissing = Math.max(0, entry.getCountMissing() - entry.getCountAvailable());
+        String glyph = userChecked ? "§a✔" : (actuallyMissing <= 0 ? "§e✔" : "§c✖");
 
-        if (actuallyMissing <= 0 && !checked) {
-            checked = true;
-            MaterialStateManager.setChecked(parent.getPlacementName(), this.rightItemName, true);
-        }
-
-        int bx = x + width - CHECKBOX_WIDTH - CHECKBOX_MARGIN;
-        int by = y + (height - CHECKBOX_WIDTH) / 2;
-        this.rightCheckbox = new ButtonGeneric(bx, by, CHECKBOX_WIDTH, CHECKBOX_WIDTH, checked ? "§a✔" : "§c✖",
-                new String[0]);
+        int bx = x + width - BmlLayoutConstants.CHECKBOX_WIDTH - BmlLayoutConstants.CHECKBOX_MARGIN;
+        int by = y + (height - BmlLayoutConstants.CHECKBOX_WIDTH) / 2;
+        this.rightCheckbox = new ButtonGeneric(bx, by, BmlLayoutConstants.CHECKBOX_WIDTH, BmlLayoutConstants.CHECKBOX_WIDTH, glyph, new String[0]);
         this.addButton(this.rightCheckbox, new IButtonActionListener() {
             @Override
             public void actionPerformedWithButton(ButtonBase button, int mouseButton) {
@@ -144,28 +121,28 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
         int actuallyMissing = Math.max(0, missingInWorld - available);
         int textY = y + (height - 8) / 2;
 
-        int iconX = x + ICON_PADDING;
-        int iconY = y + (height - ICON_SIZE) / 2;
+        int iconX = x + BmlLayoutConstants.ICON_PADDING;
+        int iconY = y + (height - BmlLayoutConstants.ICON_SIZE) / 2;
         guiContext.renderItem(stack, iconX, iconY);
         guiContext.renderItemDecorations(font, stack, iconX, iconY);
 
-        int checkboxEnd = x + width - CHECKBOX_MARGIN;
-        int checkboxStart = checkboxEnd - CHECKBOX_WIDTH;
+        int checkboxEnd   = x + width - BmlLayoutConstants.CHECKBOX_MARGIN;
+        int checkboxStart = checkboxEnd - BmlLayoutConstants.CHECKBOX_WIDTH;
 
-        int missingEnd = checkboxStart - COLUMN_GAP;
-        int missingStart = missingEnd - MISSING_WIDTH;
+        int missingEnd   = checkboxStart - BmlLayoutConstants.COLUMN_GAP;
+        int missingStart = missingEnd - BmlLayoutConstants.MISSING_WIDTH;
 
-        int availableEnd = missingStart - COLUMN_GAP;
-        int availableStart = availableEnd - AVAILABLE_WIDTH;
+        int availableEnd   = missingStart - BmlLayoutConstants.COLUMN_GAP;
+        int availableStart = availableEnd - BmlLayoutConstants.AVAILABLE_WIDTH;
 
-        int placedEnd = availableStart - COLUMN_GAP;
-        int placedStart = placedEnd - PLACED_WIDTH;
+        int placedEnd   = availableStart - BmlLayoutConstants.COLUMN_GAP;
+        int placedStart = placedEnd - BmlLayoutConstants.PLACED_WIDTH;
 
-        int totalEnd = placedStart - COLUMN_GAP;
-        int totalStart = totalEnd - TOTAL_WIDTH;
+        int totalEnd   = placedStart - BmlLayoutConstants.COLUMN_GAP;
+        int totalStart = totalEnd - BmlLayoutConstants.TOTAL_WIDTH;
 
-        int nameX = x + NAME_OFFSET_X;
-        int maxNameWidth = totalStart - nameX - COLUMN_GAP;
+        int nameX = x + BmlLayoutConstants.NAME_OFFSET_X;
+        int maxNameWidth = totalStart - nameX - BmlLayoutConstants.COLUMN_GAP;
 
         String displayName = name;
         if (font.width(displayName) > maxNameWidth && maxNameWidth > 0) {
@@ -176,8 +153,7 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
         }
         guiContext.drawString(font, displayName, nameX, textY, 0xFFFFFFFF, false);
 
-        String totalStr = String.valueOf(total);
-        guiContext.drawString(font, totalStr, totalStart, textY, 0xFFAAAAAA, false);
+        guiContext.drawString(font, String.valueOf(total), totalStart, textY, 0xFFAAAAAA, false);
 
         int placed = Math.max(0, total - missingInWorld);
         int colIconY = y + (height - 16) / 2;
