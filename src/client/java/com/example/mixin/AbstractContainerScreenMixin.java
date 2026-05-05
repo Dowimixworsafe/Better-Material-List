@@ -12,6 +12,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.registries.BuiltInRegistries;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -24,6 +25,9 @@ import java.util.Map;
 @Environment(EnvType.CLIENT)
 @Mixin(AbstractContainerScreen.class)
 public abstract class AbstractContainerScreenMixin extends net.minecraft.client.gui.screens.Screen {
+
+    @Unique
+    protected Button bml_TrackingButtonInstance;
 
     protected AbstractContainerScreenMixin(Component title) {
         super(title);
@@ -136,18 +140,30 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
         int guiLeft = (screen.width - 176) / 2;
         int guiTop = (screen.height - 166) / 2;
 
-        int btnWidth = 50;
+        int btnWidth = 20;
         int btnHeight = 20;
         int btnX = guiLeft + 176 - btnWidth;
-        int btnY = guiTop - 22; // Przycisk pojawi się nad ekwipunkiem gracza, po prawej stronie
+        int btnY = guiTop - 50; // Przycisk pojawi się nad ekwipunkiem gracza, po prawej stronie
 
-        Button bmlButton = Button.builder(Component.literal(isMarked ? "BML: §a[✓]" : "BML: §7[ ]"), button -> {
+        this.bml_TrackingButtonInstance = Button.builder(Component.literal(""), button -> {
             boolean marked = !ContainerDataManager.isContainerMarked(placement, cid);
             ContainerDataManager.setContainerMarked(placement, cid, marked);
-            button.setMessage(Component.literal(marked ? "BML: §a[✓]" : "BML: §7[ ]"));
         }).bounds(btnX, btnY, btnWidth, btnHeight).build();
 
-        this.addRenderableWidget(bmlButton);
+        this.addRenderableWidget(this.bml_TrackingButtonInstance);
+    }
+
+    @Inject(method = "render", at = @At("TAIL"))
+    public void onRender(net.minecraft.client.gui.GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        if (this.bml_TrackingButtonInstance != null && this.bml_TrackingButtonInstance.visible) {
+            String cid = getContainerId();
+            if (cid != null) {
+                boolean isMarked = ContainerDataManager.isContainerMarked(getActivePlacementName(), cid);
+                if (isMarked) {
+                    guiGraphics.renderItem(new ItemStack(net.minecraft.world.item.Items.REDSTONE_TORCH), this.bml_TrackingButtonInstance.getX() + 2, this.bml_TrackingButtonInstance.getY() + 2);
+                }
+            }
+        }
     }
 
     @Inject(method = "removed", at = @At("HEAD"))

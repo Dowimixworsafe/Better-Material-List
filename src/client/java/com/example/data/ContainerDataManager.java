@@ -1,5 +1,7 @@
 package com.example.data;
 
+import com.example.network.BmlClientNetworking;
+import com.example.party.PartyManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -92,6 +94,23 @@ public class ContainerDataManager {
             pMap.remove(containerId);
         }
         save();
+        if (com.example.party.PartyManager.isInParty()) {
+            com.example.network.BmlClientNetworking.sendContainerMarkedSync(placementName, containerId, marked);
+        }
+    }
+
+    public static void setContainerMarkedSilent(String placementName, String containerId, boolean marked) {
+        if (placementName == null || containerId == null)
+            return;
+        containerItems.putIfAbsent(placementName, new HashMap<>());
+        Map<String, Map<String, Integer>> pMap = containerItems.get(placementName);
+
+        if (marked) {
+            pMap.putIfAbsent(containerId, new HashMap<>());
+        } else {
+            pMap.remove(containerId);
+        }
+        save();
     }
 
     public static void updateContainerItems(String placementName, String containerId, Map<String, Integer> items) {
@@ -101,7 +120,24 @@ public class ContainerDataManager {
         if (isContainerMarked(placementName, containerId)) {
             containerItems.get(placementName).put(containerId, new HashMap<>(items));
             save();
+            // Wyślij sync jeśli jesteśmy w party
+            if (PartyManager.isInParty()) {
+                BmlClientNetworking.sendContainerSync(placementName, containerId, items);
+            }
         }
+    }
+
+    /**
+     * Aktualizuje dane skrzynki BEZ wysyłania pakietu sync.
+     * Wywoływana przez BmlClientNetworking gdy odbieramy sync od innego gracza.
+     * Zapobiega pętli: receive → updateContainerItems → send → receive → ...
+     */
+    public static void updateContainerItemsSilent(String placementName, String containerId, Map<String, Integer> items) {
+        if (placementName == null || containerId == null)
+            return;
+        containerItems.putIfAbsent(placementName, new HashMap<>());
+        containerItems.get(placementName).put(containerId, new HashMap<>(items));
+        save();
     }
 
     public static Map<String, Integer> getTotalItemsForPlacement(String placementName) {
@@ -125,5 +161,11 @@ public class ContainerDataManager {
             containerItems.remove(placementName);
             save();
         }
+    }
+
+    public static java.util.Set<String> getMarkedContainers(String placementName) {
+        if (placementName == null) return java.util.Collections.emptySet();
+        Map<String, Map<String, Integer>> pMap = containerItems.get(placementName);
+        return pMap != null ? pMap.keySet() : java.util.Collections.emptySet();
     }
 }

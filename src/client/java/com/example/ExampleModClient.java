@@ -4,6 +4,8 @@ import com.example.config.ModConfig;
 import com.example.data.ContainerDataManager;
 import com.example.data.MaterialStateManager;
 import com.example.input.InputHandler;
+import com.example.network.BmlClientNetworking;
+import com.example.party.PartyManager;
 import fi.dy.masa.malilib.config.ConfigManager;
 import fi.dy.masa.malilib.event.InputEventHandler;
 import net.fabricmc.api.ClientModInitializer;
@@ -30,11 +32,20 @@ public class ExampleModClient implements ClientModInitializer {
 		InputHandler.getInstance().registerKeyCallbacks();
 		InputEventHandler.getKeybindManager().registerKeybindProvider(InputHandler.getInstance());
 
-		// Rejestracja eventów sieciowych dla systemu zapisywania skrzynek
+		// Rejestracja receivera dla pakietów BML (party + sync)
+		BmlClientNetworking.registerReceiver();
+
+		// Rejestracja eventów sieciowych
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			LOGGER.info("[BetterMaterialList] Joined world. Loading data...");
 			ContainerDataManager.load();
 			MaterialStateManager.load();
+			// Wyślij handshake – sprawdza czy serwer ma BML Mod/Plugin
+			// Odroczenie o 2 sekundy żeby serwer zdążył się zainicjować
+			new Thread(() -> {
+				try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+				client.execute(BmlClientNetworking::sendHello);
+			}, "BML-Hello").start();
 		});
 
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
@@ -44,8 +55,11 @@ public class ExampleModClient implements ClientModInitializer {
 			// Czyścimy pamięć, by nie brudzić stanu przy zmianie serwera
 			ContainerDataManager.clear();
 			MaterialStateManager.clear();
+			// Reset stanu party i flagi serverSupported
+			BmlClientNetworking.serverSupported = false;
+			PartyManager.reset();
 		});
 
 		LOGGER.info("[BetterMaterialList] Client initialized! Press PERIOD (.) to open material list GUI.");
 	}
-}
+}

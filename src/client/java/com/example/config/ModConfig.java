@@ -29,6 +29,8 @@ public class ModConfig implements IConfigHandler {
          "bettermateriallist.hotkeys.reload_list");
    public static final ConfigHotkey OPEN_CONFIG = new ConfigHotkey("Open Config GUI", "UNKNOWN",
          "bettermateriallist.hotkeys.open_config");
+   public static final ConfigHotkey OPEN_PARTY = new ConfigHotkey("Open Party GUI", "O",
+         "bettermateriallist.hotkeys.open_party");
    public static final List<ConfigHotkey> HOTKEYS;
 
    public void load() {
@@ -73,6 +75,6 @@ public class ModConfig implements IConfigHandler {
    }
 
    static {
-      HOTKEYS = ImmutableList.of(OPEN_GUI, RELOAD_LIST, OPEN_CONFIG);
+      HOTKEYS = ImmutableList.of(OPEN_GUI, RELOAD_LIST, OPEN_CONFIG, OPEN_PARTY);
    }
 }

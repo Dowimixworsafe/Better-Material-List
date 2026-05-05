@@ -42,11 +42,11 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
         super(x, y, width, height, entryPair, listIndex);
         this.parent = parent;
 
-        int halfWidth = width / 2;
+        int entryWidth = parent.getLayoutMode() == GuiBetterMaterialList.LayoutMode.SINGLE ? width : width / 2;
 
-        setupLeftEntry(entryPair.getLeft(), x, y, halfWidth, height);
+        setupLeftEntry(entryPair.getLeft(), x, y, entryWidth, height);
         if (entryPair.getRight() != null) {
-            setupRightEntry(entryPair.getRight(), x + halfWidth, y, halfWidth, height);
+            setupRightEntry(entryPair.getRight(), x + entryWidth, y, entryWidth, height);
         }
     }
 
@@ -118,16 +118,18 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
         super.render(guiContext, mouseX, mouseY, selected);
 
         MaterialListEntryPair pair = (MaterialListEntryPair) this.entry;
-        int halfWidth = this.width / 2;
+        int entryWidth = parent.getLayoutMode() == GuiBetterMaterialList.LayoutMode.SINGLE ? this.width : this.width / 2;
 
         if (pair.getLeft() != null) {
-            renderHalf(guiContext, pair.getLeft(), this.x, this.y, halfWidth, this.height);
+            renderHalf(guiContext, pair.getLeft(), this.x, this.y, entryWidth, this.height);
         }
 
-        guiContext.fill(this.x + halfWidth, this.y, this.x + halfWidth + 1, this.y + this.height, 0x40FFFFFF);
+        if (parent.getLayoutMode() != GuiBetterMaterialList.LayoutMode.SINGLE) {
+            guiContext.fill(this.x + entryWidth, this.y, this.x + entryWidth + 1, this.y + this.height, 0x40FFFFFF);
+        }
 
         if (pair.getRight() != null) {
-            renderHalf(guiContext, pair.getRight(), this.x + halfWidth + 1, this.y, halfWidth - 1, this.height);
+            renderHalf(guiContext, pair.getRight(), this.x + entryWidth + 1, this.y, entryWidth - 1, this.height);
         }
     }
 

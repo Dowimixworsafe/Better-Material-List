@@ -12,7 +12,7 @@ import net.fabricmc.api.Environment;
 public class GuiConfigs extends GuiConfigsBase {
 
     public GuiConfigs() {
-        super(10, 50, "BetterMaterialList - Konfiguracja Klawiszy", null, "bettermateriallist");
+        super(10, 50, "BetterMaterialList", null, "bettermateriallist");
     }
 
     @Override

@@ -47,6 +47,7 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
         ModConfig.OPEN_GUI.getKeybind().setCallback(this);
         ModConfig.RELOAD_LIST.getKeybind().setCallback(this);
         ModConfig.OPEN_CONFIG.getKeybind().setCallback(this);
+        ModConfig.OPEN_PARTY.getKeybind().setCallback(this);
     }
 
     public boolean onKeyAction(KeyAction action, IKeybind key) {
@@ -54,6 +55,11 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
         // --- 1. Otwieranie Menu Konfiguracji ---
         if (key == ModConfig.OPEN_CONFIG.getKeybind()) {
             GuiBase.openGui(new com.example.gui.GuiConfigs());
+            return true;
+        }
+
+        if (key == ModConfig.OPEN_PARTY.getKeybind()) {
+            GuiBase.openGui(new com.example.gui.GuiParty());
             return true;
         }
 
@@ -92,46 +98,35 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
             SchematicPlacementManager manager = DataManager.getSchematicPlacementManager();
             List<SchematicPlacement> placements = manager.getAllSchematicsPlacements();
 
-            if (placements == null || placements.isEmpty()) {
-                if (Minecraft.getInstance().player != null) {
-                    Minecraft.getInstance().player.displayClientMessage(
-                            Component.literal("§c[BML] No schematic placements active!"), false);
-                }
-                return true;
-            }
+            List<MaterialListEntry> entriesToShow = new ArrayList<>();
+            String placementLabel = "Brak schematu";
+            boolean isCached = false;
+
+            if (placements != null && !placements.isEmpty()) {
 
             // Try to collect fresh materials
             List<MaterialListEntry> freshEntries = collectMaterialsFromPlacements(placements);
             String cacheKey = MaterialCacheManager.getCacheKey(placements);
 
-            boolean isCached = false;
-            List<MaterialListEntry> entriesToShow;
-            String placementLabel = buildPlacementLabel(placements);
+            placementLabel = buildPlacementLabel(placements);
 
-            if (!freshEntries.isEmpty()) {
-                // Fresh data available — use it and update the cache
-                entriesToShow = freshEntries;
-                MaterialCacheManager.saveCache(cacheKey, freshEntries);
-            } else {
-                // No fresh data (chunks unloaded, or never generated) — try loading from cache
-                List<MaterialListEntry> cached = MaterialCacheManager.loadCache(cacheKey);
-                if (cached != null && !cached.isEmpty()) {
-                    entriesToShow = cached;
-                    isCached = true;
+                if (!freshEntries.isEmpty()) {
+                    // Fresh data available — use it and update the cache
+                    entriesToShow = freshEntries;
+                    MaterialCacheManager.saveCache(cacheKey, freshEntries);
                 } else {
-                    if (Minecraft.getInstance().player != null) {
-                        Minecraft.getInstance().player.displayClientMessage(
-                                Component.literal(
-                                        "§c[BML] No material data available. Open Litematica's native Material List to calculate it first."),
-                                false);
+                    // No fresh data (chunks unloaded, or never generated) — try loading from cache
+                    List<MaterialListEntry> cached = MaterialCacheManager.loadCache(cacheKey);
+                    if (cached != null && !cached.isEmpty()) {
+                        entriesToShow = cached;
+                        isCached = true;
                     }
-                    return true;
                 }
             }
 
             // Always update available quantities based on the player's CURRENT inventory
             // before showing!
-            if (entriesToShow != null && Minecraft.getInstance().player != null) {
+            if (entriesToShow != null && !entriesToShow.isEmpty() && Minecraft.getInstance().player != null) {
                 fi.dy.masa.litematica.materials.MaterialListUtils.updateAvailableCounts(entriesToShow,
                         Minecraft.getInstance().player);
                 addCachedContainerItems(entriesToShow, placementLabel);

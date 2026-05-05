@@ -32,7 +32,13 @@ public class GuiBetterMaterialList
     private double lastMouseX = 0;
     private double lastMouseY = 0;
     private boolean wasLeftMouseDown = false;
-    private static boolean globalLayoutVertical = false;
+    private ButtonGeneric btnPlacedCheck;
+    private ButtonGeneric btnStoredCheck;
+    public enum LayoutMode {
+        TWO_HORIZONTAL, TWO_VERTICAL, SINGLE
+    }
+
+    private static LayoutMode globalLayoutMode = LayoutMode.TWO_HORIZONTAL;
 
     public enum SortMode {
         BLOCK, REQUIRED, PLACED, STORED, MISSING, CHECKED
@@ -48,7 +54,6 @@ public class GuiBetterMaterialList
         this.materialList = materialList;
         this.isCached = isCached;
         this.placements = placements;
-        this.title = "Better Material List - " + placementName + (isCached ? " §e(cached)" : " §a[Auto-refreshing...]");
     }
 
     // Overload for backwards compatibility
@@ -129,7 +134,11 @@ public class GuiBetterMaterialList
         });
 
         // --- ŁĄCZENIE W PARY (LAYOUT) ---
-        if (globalLayoutVertical) {
+        if (globalLayoutMode == LayoutMode.SINGLE) {
+            for (MaterialListEntry entry : filtered) {
+                pairs.add(new MaterialListEntryPair(entry, null));
+            }
+        } else if (globalLayoutMode == LayoutMode.TWO_VERTICAL) {
             int half = (filtered.size() + 1) / 2;
             for (int i = 0; i < half; i++) {
                 MaterialListEntry left = filtered.get(i);
@@ -137,7 +146,7 @@ public class GuiBetterMaterialList
                 pairs.add(new MaterialListEntryPair(left, right));
             }
         } else {
-            // Tryb poziomy (Wierszowy) - to co miałeś domyślnie
+            // TWO_HORIZONTAL
             for (int i = 0; i < filtered.size(); i += 2) {
                 MaterialListEntry left = filtered.get(i);
                 MaterialListEntry right = (i + 1 < filtered.size()) ? filtered.get(i + 1) : null;
@@ -148,6 +157,10 @@ public class GuiBetterMaterialList
         return pairs;
     }
 
+    public LayoutMode getLayoutMode() {
+        return globalLayoutMode;
+    }
+
     @Override
     public void initGui() {
         super.initGui();
@@ -156,8 +169,12 @@ public class GuiBetterMaterialList
         int startX = (this.getScreenWidth() - guiWidth) / 2;
         int bottomY = this.getScreenHeight() - 26;
 
+        boolean twoRows = this.getScreenWidth() < 680;
+        int row1Y = twoRows ? bottomY - 24 : bottomY;
+        int row2Y = bottomY;
+
         if (this.searchField == null) {
-            this.searchField = new EditBox(this.font, startX, bottomY, 120, 20, Component.literal("Szukaj Itemu"));
+            this.searchField = new EditBox(this.font, startX, row1Y, 120, 20, Component.literal("Szukaj Itemu"));
             this.searchField.setResponder(text -> {
                 globalSearchText = text;
                 if (this.getListWidget() != null) {
@@ -167,13 +184,13 @@ public class GuiBetterMaterialList
             this.searchField.setValue(globalSearchText);
         } else {
             this.searchField.setX(startX);
-            this.searchField.setY(bottomY);
+            this.searchField.setY(row1Y);
         }
         if (!this.children().contains(this.searchField)) {
             this.addRenderableWidget(this.searchField);
         }
 
-        ButtonGeneric btnRefresh = new ButtonGeneric(startX + 130, bottomY, 70, 20, "Odśwież");
+        ButtonGeneric btnRefresh = new ButtonGeneric(startX + 130, row1Y, 20, 20, "⟳");
         this.addButton(btnRefresh, (button, mouseButton) -> {
             if (this.placements != null) {
                 for (SchematicPlacement p : this.placements) {
@@ -185,34 +202,41 @@ public class GuiBetterMaterialList
             }
         });
 
-        ButtonGeneric btnPlaced = new ButtonGeneric(startX + 210, bottomY, 110, 20,
-                globalHideFullyPlaced ? "§aPostawione [ON]" : "§cPostawione [OFF]");
-        this.addButton(btnPlaced, (button, mouseButton) -> {
+        int btnConfigX = twoRows ? startX + 210 : startX + 160;
+        ButtonGeneric btnConfig = new ButtonGeneric(startX + guiWidth - 125, 12, 60, 20, "§eUstawienia");
+        this.addButton(btnConfig, (button, mouseButton) -> {
+            fi.dy.masa.malilib.gui.GuiBase.openGui(new com.example.gui.GuiConfigs());
+        });
+
+        int btnPlacedX = twoRows ? startX : startX + 230;
+        this.btnPlacedCheck = new ButtonGeneric(btnPlacedX, row2Y, 60, 20,
+                globalHideFullyPlaced ? "    §a[ON]" : "    §c[OFF]");
+        this.addButton(btnPlacedCheck, (button, mouseButton) -> {
             globalHideFullyPlaced = !globalHideFullyPlaced;
-            btnPlaced.setDisplayString(globalHideFullyPlaced ? "§aPostawione [ON]" : "§cPostawione [OFF]");
+            btnPlacedCheck.setDisplayString(globalHideFullyPlaced ? "    §a[ON]" : "    §c[OFF]");
             if (this.getListWidget() != null)
                 this.getListWidget().refreshEntries();
         });
 
-        ButtonGeneric btnStored = new ButtonGeneric(startX + 330, bottomY, 110, 20,
-                globalHideFullyStored ? "§aW Skrzyni [ON]" : "§cW Skrzyni [OFF]");
-        this.addButton(btnStored, (button, mouseButton) -> {
+        int btnStoredX = twoRows ? startX + 40 : startX + 300;
+        this.btnStoredCheck = new ButtonGeneric(btnStoredX, row2Y, 60, 20,
+                globalHideFullyStored ? "    §a[ON]" : "    §c[OFF]");
+        this.addButton(btnStoredCheck, (button, mouseButton) -> {
             globalHideFullyStored = !globalHideFullyStored;
-            btnStored.setDisplayString(globalHideFullyStored ? "§aW Skrzyni [ON]" : "§cW Skrzyni [OFF]");
+            btnStoredCheck.setDisplayString(globalHideFullyStored ? "    §a[ON]" : "    §c[OFF]");
             if (this.getListWidget() != null)
                 this.getListWidget().refreshEntries();
         });
 
-        ButtonGeneric btnChecked = new ButtonGeneric(startX + 450, bottomY, 110, 20,
-                globalHideChecked ? "§aZaznaczone [ON]" : "§cZaznaczone [OFF]");
+        int btnCheckedX = twoRows ? startX + 40 : startX + 370;
+        ButtonGeneric btnChecked = new ButtonGeneric(btnCheckedX, row2Y, 60, 20,
+                globalHideChecked ? "§b✔ §a[ON]" : "§b✔ §c[OFF]");
         this.addButton(btnChecked, (button, mouseButton) -> {
             globalHideChecked = !globalHideChecked;
-            btnChecked.setDisplayString(globalHideChecked ? "§aZaznaczone [ON]" : "§cZaznaczone [OFF]");
+            btnChecked.setDisplayString(globalHideChecked ? "§b✔ §a[ON]" : "§b✔ §c[OFF]");
             if (this.getListWidget() != null)
                 this.getListWidget().refreshEntries();
         });
-
-        ButtonGeneric btnConfig = new ButtonGeneric(startX + 570, bottomY, 80, 20, "§eUstawienia");
         this.addButton(btnConfig, (button, mouseButton) -> {
             // Otwiera nasze nowe GUI konfiguracyjne
             fi.dy.masa.malilib.gui.GuiBase.openGui(new com.example.gui.GuiConfigs());
@@ -220,7 +244,7 @@ public class GuiBetterMaterialList
 
         // --- PRZYCISK: Wyczyść Cache ---
         // Umieszczamy go w prawym górnym rogu GUI (Y = 12)
-        ButtonGeneric btnClearCache = new ButtonGeneric(startX + guiWidth - 100, 12, 100, 20, "§cWyczyść Cache");
+        ButtonGeneric btnClearCache = new ButtonGeneric(startX + guiWidth - 60, 12, 60, 20, "§c🗑 Cache");
         this.addButton(btnClearCache, (button, mouseButton) -> {
             // 1. Czyścimy cache z przedmiotami schematu
             if (this.placements != null) {
@@ -240,18 +264,40 @@ public class GuiBetterMaterialList
             }
         });
 
-        int layoutBtnX = startX + guiWidth - 100 - 5 - 120;
+        // --- PRZYCISK: Skrzynie BML ---
+        ButtonGeneric btnChests = new ButtonGeneric(btnConfigX, row1Y, 60, 20, "§bSkrzynie");
+        this.addButton(btnChests, (button, mouseButton) -> {
+            fi.dy.masa.malilib.gui.GuiBase.openGui(new GuiBmlChests(this.placementName));
+        });
+        int layoutBtnX = startX + guiWidth - 55 - 5 - 120;
 
-        ButtonGeneric btnLayout = new ButtonGeneric(layoutBtnX, 12, 120, 20,
-                globalLayoutVertical ? "Układ: Pionowy ⬇" : "Układ: Poziomy ➡");
+        String layoutText = globalLayoutMode == LayoutMode.SINGLE ? "Układ: 🔲" :
+                (globalLayoutMode == LayoutMode.TWO_VERTICAL ? "Układ: ⬇" : "Układ: ➡");
+        ButtonGeneric btnLayout = new ButtonGeneric(layoutBtnX, 12, 50, 20, layoutText);
 
         this.addButton(btnLayout, (button, mouseButton) -> {
-            globalLayoutVertical = !globalLayoutVertical;
-            btnLayout.setDisplayString(globalLayoutVertical ? "Układ: Pionowy ⬇" : "Układ: Poziomy ➡");
+            if (globalLayoutMode == LayoutMode.TWO_HORIZONTAL) {
+                globalLayoutMode = LayoutMode.TWO_VERTICAL;
+            } else if (globalLayoutMode == LayoutMode.TWO_VERTICAL) {
+                globalLayoutMode = LayoutMode.SINGLE;
+            } else {
+                globalLayoutMode = LayoutMode.TWO_HORIZONTAL;
+            }
+
+            String newLayoutText = globalLayoutMode == LayoutMode.SINGLE ? "Układ: 🔲" :
+                    (globalLayoutMode == LayoutMode.TWO_VERTICAL ? "Układ: ⬇" : "Układ: ➡");
+            btnLayout.setDisplayString(newLayoutText);
 
             if (this.getListWidget() != null) {
                 this.getListWidget().refreshEntries();
             }
+        });
+
+        String partyText = com.example.network.BmlClientNetworking.serverSupported ? 
+            (com.example.party.PartyManager.isInParty() ? "§a👥 Party [ON]" : "§e👥 Party") : "§7👥 Brak Serwera";
+        ButtonGeneric btnParty = new ButtonGeneric(startX, 12, 80, 20, partyText);
+        this.addButton(btnParty, (button, mouseButton) -> {
+            fi.dy.masa.malilib.gui.GuiBase.openGui(new com.example.gui.GuiParty(this.placementName));
         });
     }
 
@@ -271,6 +317,9 @@ public class GuiBetterMaterialList
         guiWidth = Math.min(guiWidth, this.getScreenWidth() - 20);
 
         int guiHeight = this.getScreenHeight() - 80;
+        if (this.getScreenWidth() < 680) {
+            guiHeight -= 24;
+        }
 
         int startX = (this.getScreenWidth() - guiWidth) / 2;
         int startY = 50;
@@ -301,9 +350,10 @@ public class GuiBetterMaterialList
         int PLACED_WIDTH = 45;
         int TOTAL_WIDTH = 55;
 
-        for (int i = 0; i < 2; i++) {
+        int loopCount = globalLayoutMode == LayoutMode.SINGLE ? 1 : 2;
+        for (int i = 0; i < loopCount; i++) {
             int x = startX + (i * halfWidth);
-            int width = halfWidth;
+            int width = globalLayoutMode == LayoutMode.SINGLE ? guiWidth : halfWidth;
             if (i == 1) { // right side offset
                 x += 1;
                 width -= 1;
@@ -340,10 +390,21 @@ public class GuiBetterMaterialList
                     currentSortMode == SortMode.MISSING ? 0xFFFFAA00 : 0xFFFFFFFF, false);
         }
 
-        drawContext.drawString(font, "Szukaj:", startX - 45, this.getScreenHeight() - 20, 0xFFFFFFFF, false);
+        if (this.materialList == null || this.materialList.isEmpty()) {
+            String text = "Nie wybrano schematu Litematiki";
+            int textWidth = font.width(text);
+            drawContext.drawString(font, text, startX + (guiWidth - textWidth) / 2, startY + 50, 0xFFFF5555, false);
+        }
 
         if (this.searchField != null) {
             this.searchField.render(drawContext, mouseX, mouseY, partialTicks);
+        }
+
+        if (this.btnPlacedCheck != null) {
+            drawContext.renderItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.GRASS_BLOCK), this.btnPlacedCheck.getX() + 4, this.btnPlacedCheck.getY() + 2);
+        }
+        if (this.btnStoredCheck != null) {
+            drawContext.renderItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.CHEST), this.btnStoredCheck.getX() + 4, this.btnStoredCheck.getY() + 2);
         }
     }
 
@@ -355,7 +416,11 @@ public class GuiBetterMaterialList
 
     @Override
     protected int getBrowserHeight() {
-        return this.getScreenHeight() - 80;
+        int height = this.getScreenHeight() - 80;
+        if (this.getScreenWidth() < 680) {
+            height -= 24;
+        }
+        return height;
     }
 
     public String getPlacementName() {
@@ -403,8 +468,6 @@ public class GuiBetterMaterialList
                     }
                 }
             }
-
-            this.title = "Better Material List - " + this.placementName;
             GuiBetterMaterialList.isFirstLoad = false;
         }
     }
@@ -430,9 +493,10 @@ public class GuiBetterMaterialList
         int startY = 38;
 
         if (mouseY >= startY - 4 && mouseY <= startY + 12) {
-            for (int i = 0; i < 2; i++) {
+            int loopCount = globalLayoutMode == LayoutMode.SINGLE ? 1 : 2;
+            for (int i = 0; i < loopCount; i++) {
                 int x = startX + (i * halfWidth);
-                int width = halfWidth;
+                int width = globalLayoutMode == LayoutMode.SINGLE ? guiWidth : halfWidth;
                 if (i == 1) {
                     x += 1;
                     width -= 1;

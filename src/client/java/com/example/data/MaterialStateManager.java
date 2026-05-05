@@ -1,5 +1,7 @@
 package com.example.data;
 
+import com.example.network.BmlClientNetworking;
+import com.example.party.PartyManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -72,15 +74,38 @@ public class MaterialStateManager {
             checkedItems.getOrDefault(placementName, new HashSet<>()).contains(itemName);
    }
 
+   /**
+    * Ustawia stan checkboxa I wysyła pakiet sync do party (jeśli gracz jest w party).
+    * Wywoływana z GUI gdy gracz kliknie checkbox.
+    */
    public static void setChecked(String placementName, String itemName, boolean checked) {
       if (placementName != null && itemName != null) {
-         checkedItems.putIfAbsent(placementName, new HashSet<>());
-         if (checked) {
-            checkedItems.get(placementName).add(itemName);
-         } else {
-            checkedItems.get(placementName).remove(itemName);
+         setCheckedInternal(placementName, itemName, checked);
+         // Wyślij sync jeśli jesteśmy w party (serverSupported jest sprawdzane wewnątrz sendCheckedSync)
+         if (PartyManager.isInParty()) {
+            BmlClientNetworking.sendCheckedSync(placementName, itemName, checked);
          }
-         save();
       }
+   }
+
+   /**
+    * Ustawia stan checkboxa BEZ wysyłania pakietu sync.
+    * Wywoływana przez BmlClientNetworking gdy odbieramy sync od innego gracza.
+    * Zapobiega nieskończonej pętli: receive → setChecked → send → receive → ...
+    */
+   public static void setCheckedSilent(String placementName, String itemName, boolean checked) {
+      if (placementName != null && itemName != null) {
+         setCheckedInternal(placementName, itemName, checked);
+      }
+   }
+
+   private static void setCheckedInternal(String placementName, String itemName, boolean checked) {
+      checkedItems.putIfAbsent(placementName, new HashSet<>());
+      if (checked) {
+         checkedItems.get(placementName).add(itemName);
+      } else {
+         checkedItems.get(placementName).remove(itemName);
+      }
+      save();
    }
 }
