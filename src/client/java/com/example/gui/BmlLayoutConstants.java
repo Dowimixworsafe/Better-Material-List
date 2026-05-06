@@ -12,6 +12,7 @@ public final class BmlLayoutConstants {
     public static final int MISSING_WIDTH   = 45;
     public static final int AVAILABLE_WIDTH = 45;
     public static final int PLACED_WIDTH    = 45;
-    public static final int TOTAL_WIDTH     = 55; // unified: was 45 in entries, 55 in headers
+    public static final int TOTAL_WIDTH           = 55;
+    public static final int SINGLE_TOTAL_WIDTH    = 145; // fits "99999 = 1562 x 64 + 31"
     public static final int SINGLE_MODE_MAX_WIDTH = 680;
 }

@@ -12,8 +12,12 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.JsonArray;
+import com.example.party.FocusManager;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Warstwa sieciowa – strona klienta.
@@ -91,10 +95,16 @@ public class BmlClientNetworking {
                 boolean marked = json.get("marked").getAsBoolean();
                 ContainerDataManager.setContainerMarkedSilent(placement, containerId, marked);
             }
-            case BmlPackets.SYNC_PLACEMENT  -> PlacementSyncHelper.applyPlacement(json);
+            case BmlPackets.SYNC_PLACEMENT       -> PlacementSyncHelper.applyPlacement(json);
             case BmlPackets.SYNC_PLACEMENT_REQUEST -> PlacementSyncHelper.handlePlacementRequest(json);
-            case BmlPackets.SYNC_FULL_STATE -> applyFullState(json);
-            default                         -> PartyManager.handle(json);
+            case BmlPackets.SYNC_FULL_STATE      -> applyFullState(json);
+            case BmlPackets.PARTY_TARGET_UPDATE  -> {
+                String player = json.get("player").getAsString();
+                Set<String> targets = new HashSet<>();
+                json.getAsJsonArray("targets").forEach(el -> targets.add(el.getAsString()));
+                FocusManager.setPlayerTargets(player, targets);
+            }
+            default                              -> PartyManager.handle(json);
         }
     }
 
@@ -176,6 +186,22 @@ public class BmlClientNetworking {
         JsonObject itemsJson = new JsonObject();
         items.forEach(itemsJson::addProperty);
         payload.add("items", itemsJson);
+        sendRaw(payload);
+    }
+
+    /** Broadcasts local player's current target set to all party members. */
+    public static void sendTargetUpdate() {
+        if (!PartyManager.isInParty()) return;
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc.player == null) return;
+        String self = mc.player.getGameProfile().name();
+        JsonObject payload = new JsonObject();
+        payload.addProperty("type", BmlPackets.PARTY_TARGET_UPDATE);
+        payload.addProperty("partyId", PartyManager.getPartyId().toString());
+        payload.addProperty("player", self);
+        JsonArray targets = new JsonArray();
+        FocusManager.getMyTargets().forEach(targets::add);
+        payload.add("targets", targets);
         sendRaw(payload);
     }
 

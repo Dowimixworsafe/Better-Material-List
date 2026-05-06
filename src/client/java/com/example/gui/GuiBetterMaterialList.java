@@ -7,11 +7,19 @@ import fi.dy.masa.malilib.gui.GuiListBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
 import fi.dy.masa.malilib.interfaces.ICompletionListener;
 import com.example.input.InputHandler;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.PlayerFaceExtractor;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import fi.dy.masa.malilib.render.GuiContext;
 
@@ -37,6 +45,21 @@ public class GuiBetterMaterialList
     private ButtonGeneric btnPlacedCheck;
     private ButtonGeneric btnStoredCheck;
     private ButtonGeneric btnAutoRefresh;
+    private ButtonGeneric btnChests;
+    private ButtonGeneric btnSchematics;
+    private fi.dy.masa.litematica.materials.MaterialListEntry hoveredEntry;
+    private int hoveredMouseX, hoveredMouseY;
+    private boolean wasRightMouseDown = false;
+    private ButtonGeneric btnFocusMaster;
+    private ButtonGeneric btnPlayers;
+    private boolean showPlayerDropdown = false;
+
+    private record FaceRenderRequest(String nick, int x, int y, int size) {}
+    private final java.util.List<FaceRenderRequest> faceRenderRequests = new java.util.ArrayList<>();
+
+    public void addFaceRenderRequest(String nick, int x, int y, int size) {
+        faceRenderRequests.add(new FaceRenderRequest(nick, x, y, size));
+    }
 
     // Auto-refresh: silently re-reads from Litematica without scheduling a task (no notification)
     private int autoRefreshTick = 0;
@@ -150,7 +173,6 @@ public class GuiBetterMaterialList
 
         int guiWidth = getEffectiveListWidth(getRawGuiWidth());
         int startX   = (this.getScreenWidth() - guiWidth) / 2;
-        int bottomY  = this.getScreenHeight() - 26;
 
         // Top bar: Party | Layout | Auto | Refresh | Settings | Clear Cache
         String partyText = com.example.network.BmlClientNetworking.serverSupported
@@ -186,8 +208,13 @@ public class GuiBetterMaterialList
         this.addButton(btnRefresh, (b, mb) -> triggerFullRefresh());
 
         // Chests
-        this.addButton(new ButtonGeneric(startX + 228, 6, 56, 20, "§b📦 Chests"),
+        this.btnChests = new ButtonGeneric(startX + 228, 6, 68, 20, "   §bChests");
+        this.addButton(this.btnChests,
                 (b, mb) -> fi.dy.masa.malilib.gui.GuiBase.openGui(new GuiBmlChests(this.placementName)));
+
+        // Schematics folder
+        this.btnSchematics = new ButtonGeneric(startX + 300, 6, 90, 20, "   §eSchematics");
+        this.addButton(this.btnSchematics, (b, mb) -> openSchematicsFolder());
 
         // Settings & Clear Cache (top-right)
         this.addButton(new ButtonGeneric(startX + guiWidth - 126, 6, 62, 20, "§eSettings"),
@@ -195,7 +222,8 @@ public class GuiBetterMaterialList
         this.addButton(new ButtonGeneric(startX + guiWidth - 60, 6, 60, 20, "§c🗑 Cache"),
                 (b, mb) -> clearCache());
 
-        // Bottom bar: Search | [filters] | [hide-checked]
+        // Bottom bar: search on its own row when narrow, filters + focus always on one row
+        int bottomY = this.getScreenHeight() - 26;
         boolean twoRows = guiWidth < 680;
         int row1Y = twoRows ? bottomY - 24 : bottomY;
         int row2Y = bottomY;
@@ -238,6 +266,21 @@ public class GuiBetterMaterialList
             btnChecked.setDisplayString(globalHideChecked ? "§b✔ §aON" : "§b✔ §cOFF");
             if (this.getListWidget() != null) this.getListWidget().refreshEntries();
         });
+
+        // Focus buttons — merged onto the filter row
+        this.btnFocusMaster = null;
+        this.btnPlayers = null;
+        if (hasFocusBar()) {
+            int fbx = filterX + 198; // filterX + Grass(56) + gap(4) + Chest(56) + gap(4) + ✔(70) + gap(8)
+            this.btnFocusMaster = new ButtonGeneric(fbx, row2Y, 84, 20, focusModeLabel());
+            this.addButton(this.btnFocusMaster, (b, mb) -> {
+                com.example.party.FocusManager.cycleFocusMode();
+                this.btnFocusMaster.setDisplayString(focusModeLabel());
+            });
+
+            this.btnPlayers = new ButtonGeneric(fbx + 88, row2Y, 72, 20, "§ePlayers §7▾");
+            this.addButton(this.btnPlayers, (b, mb) -> showPlayerDropdown = !showPlayerDropdown);
+        }
     }
 
     private void triggerFullRefresh() {
@@ -262,6 +305,145 @@ public class GuiBetterMaterialList
         }
     }
 
+    private void openSchematicsFolder() {
+        try {
+            java.io.File folder = FabricLoader.getInstance().getGameDir().resolve("schematics").toFile();
+            if (!folder.exists()) folder.mkdirs();
+            String path = folder.getAbsolutePath();
+            try {
+                java.awt.Desktop.getDesktop().open(folder);
+            } catch (Exception ignored) {
+                String os = System.getProperty("os.name", "").toLowerCase();
+                if (os.contains("win"))       new ProcessBuilder("explorer.exe", path).start();
+                else if (os.contains("mac"))  new ProcessBuilder("open", path).start();
+                else                          new ProcessBuilder("xdg-open", path).start();
+            }
+        } catch (Exception e) {
+            if (Minecraft.getInstance().player != null)
+                Minecraft.getInstance().player.sendSystemMessage(
+                        Component.literal("§c[BML] Could not open schematics folder."));
+        }
+    }
+
+    @Override
+    public void onFilesDrop(List<Path> paths) {
+        Path schematicsDir = FabricLoader.getInstance().getGameDir().resolve("schematics");
+        try {
+            Files.createDirectories(schematicsDir);
+        } catch (Exception e) {
+            return;
+        }
+        int copied = 0;
+        for (Path path : paths) {
+            String name = path.getFileName().toString();
+            if (!name.endsWith(".litematic")) continue;
+            try {
+                Files.copy(path, schematicsDir.resolve(name), StandardCopyOption.REPLACE_EXISTING);
+                copied++;
+            } catch (Exception ignored) {}
+        }
+        if (Minecraft.getInstance().player != null) {
+            String msg = copied > 0
+                    ? "§a[BML] Copied " + copied + " schematic(s) to schematics folder."
+                    : "§c[BML] No .litematic files in dropped items.";
+            Minecraft.getInstance().player.sendSystemMessage(Component.literal(msg));
+        }
+    }
+
+    public void setHoveredEntry(fi.dy.masa.litematica.materials.MaterialListEntry entry, int mouseX, int mouseY) {
+        this.hoveredEntry = entry;
+        this.hoveredMouseX = mouseX;
+        this.hoveredMouseY = mouseY;
+    }
+
+    private void renderEntryTooltip(GuiContext guiContext, fi.dy.masa.litematica.materials.MaterialListEntry entry,
+            int mouseX, int mouseY) {
+        net.minecraft.client.gui.Font font = Minecraft.getInstance().font;
+        net.minecraft.world.item.ItemStack stack = entry.getStack();
+        String fullName   = stack.getHoverName().getString();
+        int total         = entry.getCountTotal();
+        int missingInWorld= entry.getCountMissing();
+        int available     = entry.getCountAvailable();
+        int placed        = Math.max(0, total - missingInWorld);
+        int actualMissing = Math.max(0, missingInWorld - available);
+
+        String needLine  = "Need:   " + WidgetBetterMaterialListEntry.stackBreakdown(total);
+        String placeLine = "Placed: " + WidgetBetterMaterialListEntry.stackBreakdown(placed);
+        String storeLine = "Stored: " + WidgetBetterMaterialListEntry.stackBreakdown(available);
+        String missLine  = "Miss:   " + WidgetBetterMaterialListEntry.stackBreakdown(actualMissing);
+
+        // Focusing-players section (always shown in tooltip regardless of focus mode)
+        String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .getKey(stack.getItem()).toString();
+        java.util.List<com.example.party.FocusManager.PlayerFocus> focusers =
+                com.example.party.PartyManager.isInParty()
+                ? com.example.party.FocusManager.getTargetersForTooltip(itemId)
+                : java.util.Collections.emptyList();
+
+        int pad = 6;
+        int iconSize = 16;
+        int lineH = 11;
+        int faceRowH = 16;
+        String focusHeader = "Focused by:";
+        int textW = Math.max(font.width(fullName),
+                    Math.max(font.width(needLine),
+                    Math.max(font.width(placeLine),
+                    Math.max(font.width(storeLine), font.width(missLine)))));
+        if (!focusers.isEmpty()) {
+            textW = Math.max(textW, font.width(focusHeader));
+            for (var pf : focusers)
+                textW = Math.max(textW, faceRowH + 2 + font.width(pf.nick()));
+        }
+        int w = pad + iconSize + 4 + textW + pad;
+        int h = pad + iconSize + 4 + lineH * 4 + pad;
+        if (!focusers.isEmpty()) h += lineH + focusers.size() * faceRowH + 4;
+
+        int tx = mouseX + 14;
+        int ty = mouseY - h / 2;
+        if (tx + w > this.getScreenWidth()  - 4) tx = mouseX - w - 4;
+        if (ty < 4)                               ty = 4;
+        if (ty + h > this.getScreenHeight() - 4) ty = this.getScreenHeight() - h - 4;
+
+        guiContext.fill(tx - 1, ty - 1, tx + w + 1, ty + h + 1, 0xFF000000);
+        guiContext.fill(tx,     ty,     tx + w,     ty + h,     0xE8111111);
+
+        guiContext.renderItem(stack, tx + pad, ty + pad);
+        guiContext.drawString(font, fullName, tx + pad + iconSize + 4, ty + pad + (iconSize - 8) / 2, 0xFFFFFFFF, false);
+
+        int ly = ty + pad + iconSize + 4;
+        guiContext.drawString(font, needLine,  tx + pad, ly,              0xFFAAAAAA, false);
+        guiContext.drawString(font, placeLine, tx + pad, ly + lineH,      0xFFFFFFFF, false);
+        guiContext.drawString(font, storeLine, tx + pad, ly + lineH * 2,  0xFFFFFFFF, false);
+        int missColor = actualMissing > 0 ? 0xFFFF5555 : 0xFF55FF55;
+        guiContext.drawString(font, missLine,  tx + pad, ly + lineH * 3,  missColor,  false);
+
+        if (!focusers.isEmpty()) {
+            int fy = ly + lineH * 4 + 4;
+            guiContext.fill(tx + pad, fy - 1, tx + w - pad, fy, 0x40FFFFFF);
+            fy += 2;
+            guiContext.drawString(font, focusHeader, tx + pad, fy, 0xFFAAAAAA, false);
+            fy += lineH;
+            for (var pf : focusers) {
+                addFaceRenderRequest(pf.nick(), tx + pad, fy, faceRowH);
+                guiContext.drawString(font, pf.nick(), tx + pad + faceRowH + 2, fy + (faceRowH - 8) / 2, 0xFFFFFFFF, false);
+                fy += faceRowH;
+            }
+        }
+    }
+
+    private boolean hasFocusBar() {
+        return com.example.network.BmlClientNetworking.serverSupported
+                && com.example.party.PartyManager.isInParty();
+    }
+
+    private String focusModeLabel() {
+        return switch (com.example.party.FocusManager.getFocusMode()) {
+            case com.example.party.FocusManager.MODE_MINE -> "   §aFocus: Mine";
+            case com.example.party.FocusManager.MODE_ALL  -> "   §eFocus: All";
+            default -> "   §7Focus: Off";
+        };
+    }
+
     // ── Layout helpers ────────────────────────────────────────────────────────
 
     private int getRawGuiWidth() {
@@ -277,10 +459,10 @@ public class GuiBetterMaterialList
 
     @Override
     protected WidgetMaterialList createListWidget(int listX, int listY) {
-        int raw     = getRawGuiWidth();
-        int width   = getEffectiveListWidth(raw);
-        int height  = this.getScreenHeight() - 80;
-        if (getRawGuiWidth() < 680) height -= 24;
+        int raw    = getRawGuiWidth();
+        int width  = getEffectiveListWidth(raw);
+        int height = this.getScreenHeight() - 80;
+        if (raw < 680) height -= 24;
         int startX = (this.getScreenWidth() - width) / 2;
         return new WidgetMaterialList(startX, 50, width, height, this);
     }
@@ -301,6 +483,8 @@ public class GuiBetterMaterialList
     public void drawContents(GuiContext guiContext, int mouseX, int mouseY, float partialTicks) {
         this.lastMouseX = mouseX;
         this.lastMouseY = mouseY;
+        this.hoveredEntry = null; // reset each frame; entries will set it during super.drawContents
+        this.faceRenderRequests.clear();
         super.drawContents(guiContext, mouseX, mouseY, partialTicks);
 
         int raw          = getRawGuiWidth();
@@ -311,10 +495,13 @@ public class GuiBetterMaterialList
 
         net.minecraft.client.gui.Font font = Minecraft.getInstance().font;
 
-        int loopCount = globalLayoutMode == LayoutMode.SINGLE ? 1 : 2;
+        boolean isSingle = globalLayoutMode == LayoutMode.SINGLE;
+        int totalColW = isSingle ? BmlLayoutConstants.SINGLE_TOTAL_WIDTH : BmlLayoutConstants.TOTAL_WIDTH;
+
+        int loopCount = isSingle ? 1 : 2;
         for (int i = 0; i < loopCount; i++) {
             int x     = startX + (i * halfWidth);
-            int width = (globalLayoutMode == LayoutMode.SINGLE) ? effectiveW : halfWidth;
+            int width = isSingle ? effectiveW : halfWidth;
             if (i == 1) { x += 1; width -= 1; }
 
             int cEnd   = x + width - BmlLayoutConstants.CHECKBOX_MARGIN;
@@ -326,7 +513,7 @@ public class GuiBetterMaterialList
             int plEnd  = avS    - BmlLayoutConstants.COLUMN_GAP;
             int plS    = plEnd  - BmlLayoutConstants.PLACED_WIDTH;
             int toEnd  = plS    - BmlLayoutConstants.COLUMN_GAP;
-            int toS    = toEnd  - BmlLayoutConstants.TOTAL_WIDTH;
+            int toS    = toEnd  - totalColW;
 
             String arr = sortDescending ? "▼" : "▲";
             guiContext.drawString(font,
@@ -351,12 +538,16 @@ public class GuiBetterMaterialList
             String msg = "No Litematica schematic selected";
             guiContext.drawString(font, msg,
                 startX + (effectiveW - font.width(msg)) / 2, headerY + 50, 0xFFFF5555, false);
+            String hint = "§7Drop .litematic files here to add them to your schematics folder";
+            String hintPlain = "Drop .litematic files here to add them to your schematics folder";
+            guiContext.drawString(font, hint,
+                startX + (effectiveW - font.width(hintPlain)) / 2, headerY + 66, 0xFFAAAAAA, false);
         }
 
         if (this.searchField != null)
             this.searchField.extractWidgetRenderState(guiContext, mouseX, mouseY, partialTicks);
 
-        // Draw item icons over the filter buttons
+        // Draw item icons over the filter buttons and top-bar buttons
         if (this.btnPlacedCheck != null)
             guiContext.renderItem(
                 new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.GRASS_BLOCK),
@@ -365,6 +556,86 @@ public class GuiBetterMaterialList
             guiContext.renderItem(
                 new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.CHEST),
                 this.btnStoredCheck.getX() + 3, this.btnStoredCheck.getY() + 2);
+        if (this.btnChests != null)
+            guiContext.renderItem(
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.CHEST),
+                this.btnChests.getX() + 3, this.btnChests.getY() + 2);
+        if (this.btnSchematics != null)
+            guiContext.renderItem(
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FILLED_MAP),
+                this.btnSchematics.getX() + 3, this.btnSchematics.getY() + 2);
+
+        // Eye of Ender icon on the focus master toggle button
+        if (this.btnFocusMaster != null)
+            guiContext.renderItem(
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ENDER_EYE),
+                this.btnFocusMaster.getX() + 3, this.btnFocusMaster.getY() + 2);
+
+        // Players dropdown panel — rendered before tooltip so tooltip wins z-order
+        if (showPlayerDropdown && btnPlayers != null && hasFocusBar()) {
+            java.util.List<String> members = com.example.party.PartyManager.getMembers();
+            if (!members.isEmpty()) {
+                int dpx = btnPlayers.getX();
+                int dpw = 150;
+                int rowH = 18;
+                int dph = 4 + members.size() * rowH + 4;
+                int dpy = btnPlayers.getY() - dph - 2;
+                guiContext.fill(dpx - 1, dpy - 1, dpx + dpw + 1, dpy + dph + 1, 0xFF000000);
+                guiContext.fill(dpx,     dpy,     dpx + dpw,     dpy + dph,     0xE8222222);
+                for (int i = 0; i < members.size(); i++) {
+                    String nick = members.get(i);
+                    boolean hidden = com.example.party.FocusManager.isPlayerHidden(nick);
+                    int iy = dpy + 4 + i * rowH;
+                    if (mouseX >= dpx && mouseX < dpx + dpw && mouseY >= iy && mouseY < iy + rowH)
+                        guiContext.fill(dpx + 1, iy, dpx + dpw - 1, iy + rowH, 0x30FFFFFF);
+                    addFaceRenderRequest(nick, dpx + 4, iy + 2, 14);
+                    guiContext.drawString(font, (hidden ? "§7" : "§f") + nick, dpx + 22, iy + 5, 0xFFFFFFFF, false);
+                    guiContext.drawString(font, hidden ? "§c✖" : "§a●", dpx + dpw - 14, iy + 5, 0xFFFFFFFF, false);
+                }
+            }
+        }
+
+        // Hover tooltip — rendered last so it draws on top of everything
+        if (this.hoveredEntry != null && globalLayoutMode != LayoutMode.SINGLE)
+            renderEntryTooltip(guiContext, this.hoveredEntry, this.hoveredMouseX, this.hoveredMouseY);
+    }
+
+    // ── Player face rendering (requires GuiGraphicsExtractor) ─────────────────
+
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor drawContext, int mouseX, int mouseY, float partialTicks) {
+        super.extractRenderState(drawContext, mouseX, mouseY, partialTicks);
+
+        if (Minecraft.getInstance().getConnection() == null) return;
+        for (FaceRenderRequest req : faceRenderRequests) {
+            PlayerInfo info = Minecraft.getInstance().getConnection().getPlayerInfo(req.nick());
+            if (info != null)
+                PlayerFaceExtractor.extractRenderState(drawContext, info.getSkin(), req.x(), req.y(), req.size());
+        }
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean wasFocused) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        if (showPlayerDropdown && btnPlayers != null && event.button() == 0) {
+            java.util.List<String> members = com.example.party.PartyManager.getMembers();
+            int dpx = btnPlayers.getX();
+            int dpw = 150;
+            int rowH = 18;
+            int dph = 4 + members.size() * rowH + 4;
+            int dpy = btnPlayers.getY() - dph - 2;
+            if (mouseX >= dpx && mouseX < dpx + dpw && mouseY >= dpy && mouseY < dpy + dph) {
+                int index = ((int) mouseY - dpy - 4) / rowH;
+                if (index >= 0 && index < members.size())
+                    com.example.party.FocusManager.togglePlayerHidden(members.get(index));
+                return true;
+            }
+            boolean onBtn = mouseX >= btnPlayers.getX() && mouseX < btnPlayers.getX() + btnPlayers.getWidth()
+                    && mouseY >= btnPlayers.getY() && mouseY < btnPlayers.getY() + btnPlayers.getHeight();
+            if (!onBtn) showPlayerDropdown = false;
+        }
+        return super.mouseClicked(event, wasFocused);
     }
 
     // ── Tick ──────────────────────────────────────────────────────────────────
@@ -388,6 +659,19 @@ public class GuiBetterMaterialList
 
         if (isMouseDown && !this.wasLeftMouseDown) handleHeaderClick(this.lastMouseX, this.lastMouseY);
         this.wasLeftMouseDown = isMouseDown;
+
+        // Right-click on any item to toggle focus/target (party only)
+        boolean isRightDown = org.lwjgl.glfw.GLFW.glfwGetMouseButton(window,
+                org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_2) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+        if (isRightDown && !this.wasRightMouseDown
+                && this.hoveredEntry != null
+                && com.example.party.PartyManager.isInParty()) {
+            String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                    .getKey(this.hoveredEntry.getStack().getItem()).toString();
+            com.example.party.FocusManager.toggleMyTarget(itemId);
+            com.example.network.BmlClientNetworking.sendTargetUpdate();
+        }
+        this.wasRightMouseDown = isRightDown;
 
         if (isMouseDown && this.searchField != null) {
             boolean inside = lastMouseX >= searchField.getX()
@@ -450,10 +734,12 @@ public class GuiBetterMaterialList
 
         if (mouseY < headerY - 4 || mouseY > headerY + 12) return;
 
-        int loopCount = globalLayoutMode == LayoutMode.SINGLE ? 1 : 2;
+        boolean isSingle  = globalLayoutMode == LayoutMode.SINGLE;
+        int totalColW     = isSingle ? BmlLayoutConstants.SINGLE_TOTAL_WIDTH : BmlLayoutConstants.TOTAL_WIDTH;
+        int loopCount     = isSingle ? 1 : 2;
         for (int i = 0; i < loopCount; i++) {
             int x     = startX + (i * halfWidth);
-            int width = (globalLayoutMode == LayoutMode.SINGLE) ? effectiveW : halfWidth;
+            int width = isSingle ? effectiveW : halfWidth;
             if (i == 1) { x += 1; width -= 1; }
 
             int cEnd   = x + width - BmlLayoutConstants.CHECKBOX_MARGIN;
@@ -465,7 +751,7 @@ public class GuiBetterMaterialList
             int plEnd  = avS    - BmlLayoutConstants.COLUMN_GAP;
             int plS    = plEnd  - BmlLayoutConstants.PLACED_WIDTH;
             int toEnd  = plS    - BmlLayoutConstants.COLUMN_GAP;
-            int toS    = toEnd  - BmlLayoutConstants.TOTAL_WIDTH;
+            int toS    = toEnd  - totalColW;
 
             if      (mouseX >= x + BmlLayoutConstants.NAME_OFFSET_X && mouseX < toS)   { setSortMode(SortMode.BLOCK);    return; }
             else if (mouseX >= toS  && mouseX < plS)   { setSortMode(SortMode.REQUIRED); return; }

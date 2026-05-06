@@ -178,6 +178,9 @@ public class PartyManager {
             LOGGER.info("[BML-Party] Auto-requesting placements from leader: {}", adminNick);
         }
 
+        // Announce our current targets so new members see them
+        com.example.network.BmlClientNetworking.sendTargetUpdate();
+
         refreshGui();
     }
 
@@ -237,6 +240,7 @@ public class PartyManager {
         adminNick = null;
         members.clear();
         pendingInvites.clear();
+        FocusManager.clear();
     }
 
     public static void addRecentPlayer(String nick) {

@@ -36,7 +36,8 @@ public class BmlPackets {
     public static final String SYNC_FULL_STATE = "SYNC_FULL_STATE";
     public static final String SYNC_PLACEMENT  = "SYNC_PLACEMENT";
     public static final String SYNC_PLACEMENT_REQUEST = "SYNC_PLACEMENT_REQUEST";
-    public static final String PARTY_KICK      = "PARTY_KICK";
+    public static final String PARTY_KICK         = "PARTY_KICK";
+    public static final String PARTY_TARGET_UPDATE = "PARTY_TARGET_UPDATE";
 
     // ── CustomPacketPayload ───────────────────────────────────────────────────
 
