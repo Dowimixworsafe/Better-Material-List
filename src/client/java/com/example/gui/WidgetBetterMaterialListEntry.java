@@ -45,7 +45,7 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
         ItemStack stack = entry.getStack();
         this.leftItemName = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
 
-        boolean userChecked = MaterialStateManager.isChecked(parent.getPlacementName(), this.leftItemName);
+        boolean userChecked = MaterialStateManager.isChecked(parent.getChecklistKey(), this.leftItemName);
         int actuallyMissing = Math.max(0, entry.getCountMissing() - entry.getCountAvailable());
         // Three-state glyph: green = user-checked, yellow = auto-fulfilled, red = missing
         String glyph = userChecked ? "§a✔" : (actuallyMissing <= 0 ? "§e✔" : "§c✖");
@@ -56,9 +56,9 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
         this.addButton(this.leftCheckbox, new IButtonActionListener() {
             @Override
             public void actionPerformedWithButton(ButtonBase button, int mouseButton) {
-                boolean newState = !MaterialStateManager.isChecked(parent.getPlacementName(),
+                boolean newState = !MaterialStateManager.isChecked(parent.getChecklistKey(),
                         WidgetBetterMaterialListEntry.this.leftItemName);
-                MaterialStateManager.setChecked(parent.getPlacementName(),
+                MaterialStateManager.setChecked(parent.getChecklistKey(),
                         WidgetBetterMaterialListEntry.this.leftItemName, newState);
                 WidgetBetterMaterialListEntry.this.leftCheckbox.setDisplayString(newState ? "§a✔" : "§c✖");
             }
@@ -70,7 +70,7 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
         ItemStack stack = entry.getStack();
         this.rightItemName = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
 
-        boolean userChecked = MaterialStateManager.isChecked(parent.getPlacementName(), this.rightItemName);
+        boolean userChecked = MaterialStateManager.isChecked(parent.getChecklistKey(), this.rightItemName);
         int actuallyMissing = Math.max(0, entry.getCountMissing() - entry.getCountAvailable());
         String glyph = userChecked ? "§a✔" : (actuallyMissing <= 0 ? "§e✔" : "§c✖");
 
@@ -80,9 +80,9 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
         this.addButton(this.rightCheckbox, new IButtonActionListener() {
             @Override
             public void actionPerformedWithButton(ButtonBase button, int mouseButton) {
-                boolean newState = !MaterialStateManager.isChecked(parent.getPlacementName(),
+                boolean newState = !MaterialStateManager.isChecked(parent.getChecklistKey(),
                         WidgetBetterMaterialListEntry.this.rightItemName);
-                MaterialStateManager.setChecked(parent.getPlacementName(),
+                MaterialStateManager.setChecked(parent.getChecklistKey(),
                         WidgetBetterMaterialListEntry.this.rightItemName, newState);
                 WidgetBetterMaterialListEntry.this.rightCheckbox.setDisplayString(newState ? "§a✔" : "§c✖");
             }
@@ -156,18 +156,19 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
         guiContext.renderItem(stack, iconX, iconY);
         guiContext.renderItemDecorations(font, stack, iconX, iconY);
 
-        // Focus overlay — only when in party
+        String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+
+        // Border MOICH targetów — zawsze, niezależnie od party/trybu focus (PPM = zaznaczenie).
+        if (FocusManager.isLocalPlayerTargetingRaw(itemId) && Minecraft.getInstance().player != null) {
+            int c = FocusManager.getColor(Minecraft.getInstance().player.getGameProfile().name());
+            guiContext.fill(iconX - 1, iconY - 1, iconX + 17, iconY,      c); // top
+            guiContext.fill(iconX - 1, iconY + 16, iconX + 17, iconY + 17, c); // bottom
+            guiContext.fill(iconX - 1, iconY,      iconX,      iconY + 16, c); // left
+            guiContext.fill(iconX + 16, iconY,     iconX + 17, iconY + 16, c); // right
+        }
+
+        // Główki innych graczy targetujących ten item — tylko w party i gdy focus widoczny.
         if (com.example.party.PartyManager.isInParty() && FocusManager.isFocusVisible()) {
-            String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-            // Self-targeting: colored 1px border around icon
-            if (FocusManager.isLocalPlayerTargeting(itemId)) {
-                int c = FocusManager.getColor(Minecraft.getInstance().player.getGameProfile().name());
-                guiContext.fill(iconX - 1, iconY - 1, iconX + 17, iconY,      c); // top
-                guiContext.fill(iconX - 1, iconY + 16, iconX + 17, iconY + 17, c); // bottom
-                guiContext.fill(iconX - 1, iconY,      iconX,      iconY + 16, c); // left
-                guiContext.fill(iconX + 16, iconY,     iconX + 17, iconY + 16, c); // right
-            }
-            // Others targeting: small skin heads stacked in icon corner (deferred to extractRenderState)
             List<FocusManager.PlayerFocus> others = FocusManager.getTargetersWithNames(itemId);
             for (int di = 0; di < Math.min(others.size(), 3); di++) {
                 parent.addFaceRenderRequest(others.get(di).nick(), iconX + 9, iconY + di * 7, 7);

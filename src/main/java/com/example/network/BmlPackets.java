@@ -17,6 +17,13 @@ public class BmlPackets {
     // ── Identyfikator kanału ───────────────────────────────────────────────────
     public static final Identifier CHANNEL_ID = Identifier.fromNamespaceAndPath("bml", "sync");
 
+    /**
+     * Wersja protokołu danych. Bumpowana, gdy zmienia się znaczenie/kształt pól sync.
+     * v2: skrzynie są globalne (klucz = containerId), checkedItems kluczowane stabilnym
+     * "checklistKey" (posortowane nazwy włączonych placementów) — niekompatybilne z v1.
+     */
+    public static final String PROTOCOL_VERSION = "2";
+
     // ── Handshake ──────────────────────────────────────────────────────────────
     public static final String BML_HELLO     = "BML_HELLO";
     public static final String BML_HELLO_ACK = "BML_HELLO_ACK";

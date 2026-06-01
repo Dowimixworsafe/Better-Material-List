@@ -27,10 +27,16 @@ public class ModConfig implements IConfigHandler {
                fi.dy.masa.malilib.hotkeys.KeyAction.PRESS,
                false, false, false, false),
          "bettermateriallist.hotkeys.reload_list");
-   public static final ConfigHotkey OPEN_CONFIG = new ConfigHotkey("Open Config GUI", "UNKNOWN",
+   public static final ConfigHotkey OPEN_CONFIG = new ConfigHotkey("Open Config GUI", "COMMA",
          "bettermateriallist.hotkeys.open_config");
    public static final ConfigHotkey OPEN_PARTY = new ConfigHotkey("Open Party GUI", "O",
          "bettermateriallist.hotkeys.open_party");
+   public static final ConfigHotkey OPEN_CHESTS = new ConfigHotkey("Open Chests GUI", "K",
+         "bettermateriallist.hotkeys.open_chests");
+   public static final ConfigHotkey TOGGLE_HIGHLIGHT = new ConfigHotkey("Toggle Chest Highlight", "H",
+         "bettermateriallist.hotkeys.toggle_highlight");
+   public static final ConfigHotkey TOGGLE_HUD = new ConfigHotkey("Toggle Targeted-Items HUD", "J",
+         "bettermateriallist.hotkeys.toggle_hud");
    public static final List<ConfigHotkey> HOTKEYS;
 
    public void load() {
@@ -75,6 +81,6 @@ public class ModConfig implements IConfigHandler {
    }
 
    static {
-      HOTKEYS = ImmutableList.of(OPEN_GUI, RELOAD_LIST, OPEN_CONFIG, OPEN_PARTY);
+      HOTKEYS = ImmutableList.of(OPEN_GUI, RELOAD_LIST, OPEN_CONFIG, OPEN_PARTY, OPEN_CHESTS, TOGGLE_HIGHLIGHT, TOGGLE_HUD);
    }
 }

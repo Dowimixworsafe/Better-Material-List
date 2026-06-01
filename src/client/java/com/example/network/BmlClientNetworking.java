@@ -63,9 +63,25 @@ public class BmlClientNetworking {
 
     // ─── Dispatcher (przychodzące) ─────────────────────────────────────────────
 
+    /** Ostrzegamy tylko raz na sesję, gdy ktoś w party ma niezgodną wersję protokołu. */
+    private static boolean versionMismatchWarned = false;
+
     private static void handleIncoming(JsonObject json) {
         String type = json.get("type").getAsString();
         LOGGER.debug("[BML-Network] Received: {}", type);
+
+        // Wykrycie niezgodnej wersji moda u innego członka party (pakiety niosą "v").
+        if (json.has("v") && !BmlPackets.PROTOCOL_VERSION.equals(json.get("v").getAsString())
+                && !versionMismatchWarned) {
+            versionMismatchWarned = true;
+            LOGGER.warn("[BML-Network] Party member uses protocol v{} but we use v{} — sync may be unreliable.",
+                    json.get("v").getAsString(), BmlPackets.PROTOCOL_VERSION);
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+            if (mc.player != null) {
+                mc.player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                        "§e[BML] Ktoś w party ma inną wersję moda — synchronizacja może być niepełna. Zaktualizujcie do tej samej wersji."));
+            }
+        }
 
         switch (type) {
             case BmlPackets.BML_HELLO_ACK -> {
@@ -73,27 +89,25 @@ public class BmlClientNetworking {
                 LOGGER.info("[BML-Network] Server supports BML! Party features enabled.");
             }
             case BmlPackets.SYNC_CHECKED -> {
-                String syncId = json.get("placement").getAsString();
-                String placement = com.example.data.SyncIdManager.getPlacementBySyncId(syncId);
+                // "placement" niesie wprost checklistKey (nazwy włączonych placementów).
+                String placement = json.get("placement").getAsString();
                 String itemName  = json.get("itemName").getAsString();
                 boolean checked  = json.get("checked").getAsBoolean();
-                MaterialStateManager.setCheckedSilent(placement, itemName, checked);
+                long ts = json.has("ts") ? json.get("ts").getAsLong() : System.currentTimeMillis();
+                MaterialStateManager.setCheckedSilentVersioned(placement, itemName, checked, ts);
             }
             case BmlPackets.SYNC_CONTAINER -> {
-                String syncId = json.get("placement").getAsString();
-                String placement = com.example.data.SyncIdManager.getPlacementBySyncId(syncId);
+                // Skrzynie są globalne (klucz = containerId); pole "placement" jest ignorowane.
                 String containerId = json.get("containerId").getAsString();
                 java.util.HashMap<String, Integer> items = new java.util.HashMap<>();
                 json.getAsJsonObject("items").entrySet()
                     .forEach(e -> items.put(e.getKey(), e.getValue().getAsInt()));
-                ContainerDataManager.updateContainerItemsSilent(placement, containerId, items);
+                ContainerDataManager.updateContainerItemsSilent(containerId, items);
             }
             case BmlPackets.SYNC_CONTAINER_MARKED -> {
-                String syncId = json.get("placement").getAsString();
-                String placement = com.example.data.SyncIdManager.getPlacementBySyncId(syncId);
                 String containerId = json.get("containerId").getAsString();
                 boolean marked = json.get("marked").getAsBoolean();
-                ContainerDataManager.setContainerMarkedSilent(placement, containerId, marked);
+                ContainerDataManager.setContainerMarkedSilent(containerId, marked);
             }
             case BmlPackets.SYNC_PLACEMENT       -> PlacementSyncHelper.applyPlacement(json);
             case BmlPackets.SYNC_PLACEMENT_REQUEST -> PlacementSyncHelper.handlePlacementRequest(json);
@@ -109,24 +123,22 @@ public class BmlClientNetworking {
     }
 
     private static void applyFullState(JsonObject json) {
+        // checkedItems: { checklistKey -> { itemName -> bool } }  (klucz jest nieprzezroczysty)
         if (json.has("checkedItems")) {
-            json.getAsJsonObject("checkedItems").entrySet().forEach(placementEntry -> {
-                String placement = placementEntry.getKey();
-                placementEntry.getValue().getAsJsonObject().entrySet().forEach(itemEntry ->
+            json.getAsJsonObject("checkedItems").entrySet().forEach(keyEntry -> {
+                String checklistKey = keyEntry.getKey();
+                keyEntry.getValue().getAsJsonObject().entrySet().forEach(itemEntry ->
                     MaterialStateManager.setCheckedSilent(
-                        placement, itemEntry.getKey(), itemEntry.getValue().getAsBoolean()));
+                        checklistKey, itemEntry.getKey(), itemEntry.getValue().getAsBoolean()));
             });
         }
+        // containers (model globalny): { containerId -> { itemName -> count } }
         if (json.has("containers")) {
-            json.getAsJsonObject("containers").entrySet().forEach(placementEntry -> {
-                String placement = placementEntry.getKey();
-                placementEntry.getValue().getAsJsonObject().entrySet().forEach(containerEntry -> {
-                    java.util.HashMap<String, Integer> items = new java.util.HashMap<>();
-                    containerEntry.getValue().getAsJsonObject().entrySet()
-                        .forEach(ie -> items.put(ie.getKey(), ie.getValue().getAsInt()));
-                    ContainerDataManager.updateContainerItemsSilent(
-                        placement, containerEntry.getKey(), items);
-                });
+            json.getAsJsonObject("containers").entrySet().forEach(containerEntry -> {
+                java.util.HashMap<String, Integer> items = new java.util.HashMap<>();
+                containerEntry.getValue().getAsJsonObject().entrySet()
+                    .forEach(ie -> items.put(ie.getKey(), ie.getValue().getAsInt()));
+                ContainerDataManager.updateContainerItemsSilent(containerEntry.getKey(), items);
             });
         }
     }
@@ -140,6 +152,11 @@ public class BmlClientNetworking {
     public static void sendRaw(JsonObject payload) {
         if (!serverSupported) return;
         try {
+            // Stempel wersji protokołu na każdym pakiecie — pozwala odbiorcy wykryć
+            // niezgodną wersję moda u innego członka party.
+            if (!payload.has("v")) {
+                payload.addProperty("v", BmlPackets.PROTOCOL_VERSION);
+            }
             byte[] bytes = payload.toString().getBytes(StandardCharsets.UTF_8);
             ClientPlayNetworking.send(new BmlPackets.BmlPayload(bytes));
         } catch (Exception e) {
@@ -152,7 +169,7 @@ public class BmlClientNetworking {
         try {
             JsonObject payload = new JsonObject();
             payload.addProperty("type", BmlPackets.BML_HELLO);
-            payload.addProperty("version", "1");
+            payload.addProperty("version", BmlPackets.PROTOCOL_VERSION);
             byte[] bytes = payload.toString().getBytes(StandardCharsets.UTF_8);
             ClientPlayNetworking.send(new BmlPackets.BmlPayload(bytes));
             LOGGER.info("[BML-Network] Sent BML_HELLO to server.");
@@ -163,15 +180,20 @@ public class BmlClientNetworking {
 
     // ─── Pomocnicze metody budujące payloady ──────────────────────────────────
 
-    /** Sync checkboxa – wywoływany z MaterialStateManager.setChecked(). */
+    /**
+     * Sync checkboxa – wywoływany z MaterialStateManager.setChecked().
+     * Pole "placement" niesie wprost checklistKey (nazwy włączonych placementów).
+     * Pole "ts" pozwala odbiorcy rozstrzygnąć kolejność (last-write-wins).
+     */
     public static void sendCheckedSync(String placement, String itemName, boolean checked) {
         if (!PartyManager.isInParty()) return;
         JsonObject payload = new JsonObject();
         payload.addProperty("type", BmlPackets.SYNC_CHECKED);
         payload.addProperty("partyId", PartyManager.getPartyId().toString());
-        payload.addProperty("placement", com.example.data.SyncIdManager.getSyncId(placement));
+        payload.addProperty("placement", placement);
         payload.addProperty("itemName", itemName);
         payload.addProperty("checked", checked);
+        payload.addProperty("ts", System.currentTimeMillis());
         sendRaw(payload);
     }
 
@@ -181,7 +203,7 @@ public class BmlClientNetworking {
         JsonObject payload = new JsonObject();
         payload.addProperty("type", BmlPackets.SYNC_CONTAINER);
         payload.addProperty("partyId", PartyManager.getPartyId().toString());
-        payload.addProperty("placement", com.example.data.SyncIdManager.getSyncId(placement));
+        payload.addProperty("placement", placement);
         payload.addProperty("containerId", containerId);
         JsonObject itemsJson = new JsonObject();
         items.forEach(itemsJson::addProperty);
@@ -205,12 +227,49 @@ public class BmlClientNetworking {
         sendRaw(payload);
     }
 
+    /**
+     * Wysyła pełny stan (zaznaczenia + zawartość oznaczonych skrzyń) do konkretnego gracza.
+     * Wywoływane gdy ktoś dołącza do party i prosi o synchronizację — dzięki temu nie musi
+     * skanować wszystkiego od zera.
+     *
+     * Uwaga: pole "targetNick" jest honorowane tylko jeśli serwer/plugin potrafi routować
+     * per-gracz; relay-plugin rozśle to broadcastem do party, co jest bezpieczne, bo odbiór
+     * pełnego stanu jest scalający (merge), a nie nadpisujący.
+     */
+    public static void sendFullStateTo(String targetNick) {
+        if (!PartyManager.isInParty()) return;
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("type", BmlPackets.SYNC_FULL_STATE);
+        payload.addProperty("partyId", PartyManager.getPartyId().toString());
+        if (targetNick != null) payload.addProperty("targetNick", targetNick);
+
+        JsonObject checkedJson = new JsonObject();
+        MaterialStateManager.snapshot().forEach((key, items) -> {
+            JsonObject itemsJson = new JsonObject();
+            items.forEach(item -> itemsJson.addProperty(item, true));
+            if (itemsJson.size() > 0) checkedJson.add(key, itemsJson);
+        });
+        payload.add("checkedItems", checkedJson);
+
+        JsonObject containersJson = new JsonObject();
+        ContainerDataManager.snapshot().forEach((containerId, items) -> {
+            JsonObject itemsJson = new JsonObject();
+            items.forEach(itemsJson::addProperty);
+            containersJson.add(containerId, itemsJson);
+        });
+        payload.add("containers", containersJson);
+
+        sendRaw(payload);
+        LOGGER.info("[BML-Network] Sent full state to {}.", targetNick);
+    }
+
     public static void sendContainerMarkedSync(String placement, String containerId, boolean marked) {
         if (!PartyManager.isInParty()) return;
         JsonObject payload = new JsonObject();
         payload.addProperty("type", BmlPackets.SYNC_CONTAINER_MARKED);
         payload.addProperty("partyId", PartyManager.getPartyId().toString());
-        payload.addProperty("placement", com.example.data.SyncIdManager.getSyncId(placement));
+        payload.addProperty("placement", placement);
         payload.addProperty("containerId", containerId);
         payload.addProperty("marked", marked);
         sendRaw(payload);

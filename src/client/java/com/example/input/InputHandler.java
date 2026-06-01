@@ -48,6 +48,9 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
         ModConfig.RELOAD_LIST.getKeybind().setCallback(this);
         ModConfig.OPEN_CONFIG.getKeybind().setCallback(this);
         ModConfig.OPEN_PARTY.getKeybind().setCallback(this);
+        ModConfig.OPEN_CHESTS.getKeybind().setCallback(this);
+        ModConfig.TOGGLE_HIGHLIGHT.getKeybind().setCallback(this);
+        ModConfig.TOGGLE_HUD.getKeybind().setCallback(this);
     }
 
     public boolean onKeyAction(KeyAction action, IKeybind key) {
@@ -60,6 +63,32 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
 
         if (key == ModConfig.OPEN_PARTY.getKeybind()) {
             GuiBase.openGui(new com.example.gui.GuiParty());
+            return true;
+        }
+
+        if (key == ModConfig.OPEN_CHESTS.getKeybind()) {
+            GuiBase.openGui(new com.example.gui.GuiBmlChests(buildPlacementLabel(
+                    DataManager.getSchematicPlacementManager().getAllSchematicsPlacements())));
+            return true;
+        }
+
+        if (key == ModConfig.TOGGLE_HIGHLIGHT.getKeybind()) {
+            boolean on = com.example.data.ChestHighlightManager.toggleAll();
+            if (Minecraft.getInstance().player != null) {
+                Minecraft.getInstance().player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                        on ? "§a[BML] Podświetlono śledzone skrzynie." : "§7[BML] Wyłączono podświetlenie skrzyń."));
+            }
+            return true;
+        }
+
+        if (key == ModConfig.TOGGLE_HUD.getKeybind()) {
+            boolean on = com.example.data.HudOverlayManager.toggle();
+            com.example.party.FocusManager.save(); // zapamiętaj flagę HUD po relogu
+            if (Minecraft.getInstance().player != null) {
+                Minecraft.getInstance().player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                        on ? "§a[BML] HUD zaznaczonych itemów: WŁ. §7(zaznacz itemy PPM na liście)"
+                           : "§7[BML] HUD zaznaczonych itemów: WYŁ."));
+            }
             return true;
         }
 
@@ -95,44 +124,7 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
 
         // --- 3. Otwieranie Głównego GUI (To co miałeś) ---
         if (key == ModConfig.OPEN_GUI.getKeybind()) {
-            SchematicPlacementManager manager = DataManager.getSchematicPlacementManager();
-            List<SchematicPlacement> placements = manager.getAllSchematicsPlacements();
-
-            List<MaterialListEntry> entriesToShow = new ArrayList<>();
-            String placementLabel = "Brak schematu";
-            boolean isCached = false;
-
-            if (placements != null && !placements.isEmpty()) {
-
-            // Try to collect fresh materials
-            List<MaterialListEntry> freshEntries = collectMaterialsFromPlacements(placements);
-            String cacheKey = MaterialCacheManager.getCacheKey(placements);
-
-            placementLabel = buildPlacementLabel(placements);
-
-                if (!freshEntries.isEmpty()) {
-                    // Fresh data available — use it and update the cache
-                    entriesToShow = freshEntries;
-                    MaterialCacheManager.saveCache(cacheKey, freshEntries);
-                } else {
-                    // No fresh data (chunks unloaded, or never generated) — try loading from cache
-                    List<MaterialListEntry> cached = MaterialCacheManager.loadCache(cacheKey);
-                    if (cached != null && !cached.isEmpty()) {
-                        entriesToShow = cached;
-                        isCached = true;
-                    }
-                }
-            }
-
-            // Always update available quantities based on the player's CURRENT inventory
-            // before showing!
-            if (entriesToShow != null && !entriesToShow.isEmpty() && Minecraft.getInstance().player != null) {
-                fi.dy.masa.litematica.materials.MaterialListUtils.updateAvailableCounts(entriesToShow,
-                        Minecraft.getInstance().player);
-                addCachedContainerItems(entriesToShow, placementLabel);
-            }
-
-            GuiBase.openGui(new GuiBetterMaterialList(placementLabel, entriesToShow, isCached, placements));
+            openMaterialList();
             return true;
         }
 
@@ -140,8 +132,47 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
         return false;
     }
 
-    public static void addCachedContainerItems(List<MaterialListEntry> entries, String placementLabel) {
-        Map<String, Integer> containerItems = ContainerDataManager.getTotalItemsForPlacement(placementLabel);
+    /**
+     * Otwiera główne GUI listy materiałów (świeże dane lub cache). Publiczne, bo używane
+     * też przez przyciski "wstecz" w podekranach (Config / Chests / Party).
+     */
+    public static void openMaterialList() {
+        SchematicPlacementManager manager = DataManager.getSchematicPlacementManager();
+        List<SchematicPlacement> placements = manager.getAllSchematicsPlacements();
+
+        List<MaterialListEntry> entriesToShow = new ArrayList<>();
+        String placementLabel = "Brak schematu";
+        boolean isCached = false;
+
+        if (placements != null && !placements.isEmpty()) {
+            List<MaterialListEntry> freshEntries = collectMaterialsFromPlacements(placements);
+            String cacheKey = MaterialCacheManager.getCacheKey(placements);
+
+            placementLabel = buildPlacementLabel(placements);
+
+            if (!freshEntries.isEmpty()) {
+                entriesToShow = freshEntries;
+                MaterialCacheManager.saveCache(cacheKey, freshEntries);
+            } else {
+                List<MaterialListEntry> cached = MaterialCacheManager.loadCache(cacheKey);
+                if (cached != null && !cached.isEmpty()) {
+                    entriesToShow = cached;
+                    isCached = true;
+                }
+            }
+        }
+
+        if (entriesToShow != null && !entriesToShow.isEmpty() && Minecraft.getInstance().player != null) {
+            fi.dy.masa.litematica.materials.MaterialListUtils.updateAvailableCounts(entriesToShow,
+                    Minecraft.getInstance().player);
+            addCachedContainerItems(entriesToShow);
+        }
+
+        GuiBase.openGui(new GuiBetterMaterialList(placementLabel, entriesToShow, isCached, placements));
+    }
+
+    public static void addCachedContainerItems(List<MaterialListEntry> entries) {
+        Map<String, Integer> containerItems = ContainerDataManager.getTotalItems();
         if (!containerItems.isEmpty() && entries != null) {
             for (MaterialListEntry entry : entries) {
                 Identifier id = BuiltInRegistries.ITEM.getKey(entry.getStack().getItem());

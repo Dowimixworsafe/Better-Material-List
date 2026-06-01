@@ -1,18 +1,19 @@
 {
 	"schemaVersion": 1,
 	"id": "bettermateriallist",
-	"version": "1.0.0",
-	"name": "Better Material List",
-	"description": "Enhanced Litematica material list with checkboxes to track collected items.",
+	"version": "${version}",
+	"name": "BML — Better Material List",
+	"description": "A Litematica add-on that supercharges the material list: per-item checkboxes, tracked-chest 'stored' counts with in-world highlighting and content preview, a party system that syncs progress between players, a targeted-items HUD, and quick filtering.",
 	"authors": [
-		"Me!"
+		"Dowimixworsafe"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/Dowimixworsafe/Better-Material-List",
+		"sources": "https://github.com/Dowimixworsafe/Better-Material-List",
+		"issues": "https://github.com/Dowimixworsafe/Better-Material-List/issues"
 	},
-	"license": "CC0-1.0",
-	"icon": "assets/modid/icon.png",
+	"license": "ARR",
+	"icon": "assets/bettermateriallist/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [

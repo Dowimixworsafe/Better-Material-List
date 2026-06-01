@@ -24,9 +24,12 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Environment(EnvType.CLIENT)
 public class MaterialCacheManager {
+    private static final Logger LOGGER = LoggerFactory.getLogger("BML-Cache");
     private static final File CACHE_FILE = new File(
             FabricLoader.getInstance().getConfigDir().toFile(),
             "bettermateriallist_cache.json");
@@ -48,7 +51,7 @@ public class MaterialCacheManager {
                     cacheRoot = element.getAsJsonObject();
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                LOGGER.error("[BML] Failed to read material cache — starting empty: {}", e.getMessage());
                 cacheRoot = new JsonObject();
             }
         }
@@ -67,7 +70,7 @@ public class MaterialCacheManager {
                 GSON.toJson(cacheRoot, writer);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("[BML] Failed to save material cache: {}", e.getMessage());
         }
     }
 
@@ -156,7 +159,7 @@ public class MaterialCacheManager {
                     result.add(mle);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                LOGGER.warn("[BML] Skipping unparseable cached item '{}': {}", itemId, e.getMessage());
             }
         }
 

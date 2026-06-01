@@ -108,12 +108,18 @@ public class GuiBetterMaterialList
             if (globalHideChecked) {
                 String itemName = net.minecraft.core.registries.BuiltInRegistries.ITEM
                         .getKey(entry.getStack().getItem()).toString();
-                boolean checked = com.example.data.MaterialStateManager.isChecked(this.placementName, itemName);
+                boolean checked = com.example.data.MaterialStateManager.isChecked(getChecklistKey(), itemName);
                 if (checked || (actuallyMissing <= 0 && total > 0)) continue;
             }
             if (!globalSearchText.isEmpty()) {
                 String name = entry.getStack().getHoverName().getString().toLowerCase();
                 if (!name.contains(globalSearchText.toLowerCase())) continue;
+            }
+            // Filtr graczy: gdy aktywny, pokazuj tylko itemy targetowane przez wybranych.
+            if (com.example.party.FocusManager.isListFilterActive()) {
+                String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                        .getKey(entry.getStack().getItem()).toString();
+                if (!com.example.party.FocusManager.passesPlayerFilter(itemId)) continue;
             }
             filtered.add(entry);
         }
@@ -136,8 +142,8 @@ public class GuiBetterMaterialList
                 case CHECKED -> {
                     String n1 = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(e1.getStack().getItem()).toString();
                     String n2 = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(e2.getStack().getItem()).toString();
-                    boolean c1 = com.example.data.MaterialStateManager.isChecked(this.placementName, n1);
-                    boolean c2 = com.example.data.MaterialStateManager.isChecked(this.placementName, n2);
+                    boolean c1 = com.example.data.MaterialStateManager.isChecked(getChecklistKey(), n1);
+                    boolean c2 = com.example.data.MaterialStateManager.isChecked(getChecklistKey(), n2);
                     result = Boolean.compare(c1, c2);
                 }
                 default -> result = e1.getStack().getHoverName().getString()
@@ -298,7 +304,7 @@ public class GuiBetterMaterialList
             com.example.data.MaterialCacheManager.clearCache(
                     com.example.data.MaterialCacheManager.getCacheKey(this.placements));
         }
-        com.example.data.ContainerDataManager.clearPlacement(this.placementName);
+        com.example.data.ContainerDataManager.clearAll();
         if (Minecraft.getInstance().player != null) {
             Minecraft.getInstance().player.sendSystemMessage(
                     Component.literal("§a[BML] Cache cleared. Use ⟳ to recount."));
@@ -578,19 +584,25 @@ public class GuiBetterMaterialList
                 int dpx = btnPlayers.getX();
                 int dpw = 150;
                 int rowH = 18;
-                int dph = 4 + members.size() * rowH + 4;
+                int headerH = 14;
+                int dph = 4 + headerH + members.size() * rowH + 4;
                 int dpy = btnPlayers.getY() - dph - 2;
                 guiContext.fill(dpx - 1, dpy - 1, dpx + dpw + 1, dpy + dph + 1, 0xFF000000);
                 guiContext.fill(dpx,     dpy,     dpx + dpw,     dpy + dph,     0xE8222222);
+                // Nagłówek: wyjaśnia, że klik filtruje listę do itemów gracza.
+                guiContext.drawString(font, "§7Klik = pokaż tylko itemy", dpx + 4, dpy + 4, 0xFFFFFFFF, false);
+                int rowsTop = dpy + 4 + headerH;
                 for (int i = 0; i < members.size(); i++) {
                     String nick = members.get(i);
-                    boolean hidden = com.example.party.FocusManager.isPlayerHidden(nick);
-                    int iy = dpy + 4 + i * rowH;
+                    boolean filtered = com.example.party.FocusManager.isPlayerFiltered(nick);
+                    int iy = rowsTop + i * rowH;
                     if (mouseX >= dpx && mouseX < dpx + dpw && mouseY >= iy && mouseY < iy + rowH)
                         guiContext.fill(dpx + 1, iy, dpx + dpw - 1, iy + rowH, 0x30FFFFFF);
+                    if (filtered)
+                        guiContext.fill(dpx + 1, iy, dpx + dpw - 1, iy + rowH, 0x4055FF55);
                     addFaceRenderRequest(nick, dpx + 4, iy + 2, 14);
-                    guiContext.drawString(font, (hidden ? "§7" : "§f") + nick, dpx + 22, iy + 5, 0xFFFFFFFF, false);
-                    guiContext.drawString(font, hidden ? "§c✖" : "§a●", dpx + dpw - 14, iy + 5, 0xFFFFFFFF, false);
+                    guiContext.drawString(font, (filtered ? "§a" : "§f") + nick, dpx + 22, iy + 5, 0xFFFFFFFF, false);
+                    guiContext.drawString(font, filtered ? "§a🔎" : "§7○", dpx + dpw - 16, iy + 5, 0xFFFFFFFF, false);
                 }
             }
         }
@@ -623,12 +635,16 @@ public class GuiBetterMaterialList
             int dpx = btnPlayers.getX();
             int dpw = 150;
             int rowH = 18;
-            int dph = 4 + members.size() * rowH + 4;
+            int headerH = 14;
+            int dph = 4 + headerH + members.size() * rowH + 4;
             int dpy = btnPlayers.getY() - dph - 2;
+            int rowsTop = dpy + 4 + headerH;
             if (mouseX >= dpx && mouseX < dpx + dpw && mouseY >= dpy && mouseY < dpy + dph) {
-                int index = ((int) mouseY - dpy - 4) / rowH;
-                if (index >= 0 && index < members.size())
-                    com.example.party.FocusManager.togglePlayerHidden(members.get(index));
+                int index = ((int) mouseY - rowsTop) / rowH;
+                if (index >= 0 && index < members.size()) {
+                    com.example.party.FocusManager.togglePlayerFilter(members.get(index));
+                    if (this.getListWidget() != null) this.getListWidget().refreshEntries();
+                }
                 return true;
             }
             boolean onBtn = mouseX >= btnPlayers.getX() && mouseX < btnPlayers.getX() + btnPlayers.getWidth()
@@ -660,16 +676,19 @@ public class GuiBetterMaterialList
         if (isMouseDown && !this.wasLeftMouseDown) handleHeaderClick(this.lastMouseX, this.lastMouseY);
         this.wasLeftMouseDown = isMouseDown;
 
-        // Right-click on any item to toggle focus/target (party only)
+        // Right-click on any item to toggle focus/target. Działa też solo (target jest
+        // lokalny); sync do party wysyłamy tylko gdy faktycznie jesteśmy w party.
         boolean isRightDown = org.lwjgl.glfw.GLFW.glfwGetMouseButton(window,
                 org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_2) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
-        if (isRightDown && !this.wasRightMouseDown
-                && this.hoveredEntry != null
-                && com.example.party.PartyManager.isInParty()) {
+        if (isRightDown && !this.wasRightMouseDown && this.hoveredEntry != null) {
             String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM
                     .getKey(this.hoveredEntry.getStack().getItem()).toString();
             com.example.party.FocusManager.toggleMyTarget(itemId);
-            com.example.network.BmlClientNetworking.sendTargetUpdate();
+            if (com.example.party.PartyManager.isInParty()) {
+                com.example.network.BmlClientNetworking.sendTargetUpdate();
+            }
+            // Odśwież HUD natychmiast po zmianie zaznaczenia.
+            com.example.data.HudOverlayManager.recompute();
         }
         this.wasRightMouseDown = isRightDown;
 
@@ -706,7 +725,7 @@ public class GuiBetterMaterialList
         List<MaterialListEntry> fresh = InputHandler.collectMaterialsFromPlacements(this.placements);
         if (Minecraft.getInstance().player != null) {
             MaterialListUtils.updateAvailableCounts(fresh, Minecraft.getInstance().player);
-            InputHandler.addCachedContainerItems(fresh, this.placementName);
+            InputHandler.addCachedContainerItems(fresh);
         }
         this.materialList = fresh;
         if (this.getListWidget() != null) this.getListWidget().refreshEntries();
@@ -718,7 +737,7 @@ public class GuiBetterMaterialList
             this.materialList = InputHandler.collectMaterialsFromPlacements(this.placements);
             if (Minecraft.getInstance().player != null) {
                 MaterialListUtils.updateAvailableCounts(this.materialList, Minecraft.getInstance().player);
-                InputHandler.addCachedContainerItems(this.materialList, this.placementName);
+                InputHandler.addCachedContainerItems(this.materialList);
             }
             this.initGui();
         }
@@ -769,5 +788,15 @@ public class GuiBetterMaterialList
     }
 
     public String getPlacementName()  { return this.placementName; }
+
+    /**
+     * Stabilny klucz dla zaznaczeń (checkboxów). Liczony z aktualnie WŁĄCZONYCH
+     * placementów (posortowanych), więc jest niezależny od kolejności i od tego, jak
+     * wygląda etykieta tytułowa {@link #placementName}. Patrz {@link com.example.util.BmlPlacementKeys}.
+     */
+    public String getChecklistKey() {
+        return com.example.util.BmlPlacementKeys.checklistKey(this.placements);
+    }
+
     public boolean isSearchFocused()  { return this.searchField != null && this.searchField.isFocused(); }
 }

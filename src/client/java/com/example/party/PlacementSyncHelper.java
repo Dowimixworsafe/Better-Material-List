@@ -131,6 +131,9 @@ public class PlacementSyncHelper {
             // Odsylamy BEZPOSREDNIO do tego gracza
             sendSinglePlacement(placement, requestingNick);
         }
+        // Dorzucamy pełny stan (stored + zaznaczenia), żeby dołączający gracz nie musiał
+        // skanować skrzyń od zera.
+        BmlClientNetworking.sendFullStateTo(requestingNick);
         LOGGER.info("[BML-PlacementSync] Responded to placement request from {}", requestingNick);
     }
 

@@ -38,3 +38,18 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+
+# claude / AI tooling
+
+CLAUDE.md
+.claude/
+
+# scratch / build logs
+
+tmp_*.txt
+build_log*.txt
+build_output*.txt
+
+# bundled server plugin has its own git repo
+
+_plugin/

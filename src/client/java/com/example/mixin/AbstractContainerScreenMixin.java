@@ -1,7 +1,6 @@
 package com.example.mixin;
 
 import com.example.data.ContainerDataManager;
-import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
@@ -17,9 +16,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Environment(EnvType.CLIENT)
@@ -75,49 +72,6 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
         return Minecraft.getInstance().level.dimension().identifier().toString() + ";" + pos.toShortString();
     }
 
-    // Dokładnie odwzorowuje logikę z InputHandler, aby nazwy grup schematów się
-    // zgadzały!
-    private String getActivePlacementName() {
-        try {
-            var allPlacements = fi.dy.masa.litematica.data.DataManager.getSchematicPlacementManager()
-                    .getAllSchematicsPlacements();
-            List<SchematicPlacement> activePlacements = new ArrayList<>();
-
-            for (var p : allPlacements) {
-                if (p.isEnabled()) {
-                    activePlacements.add(p);
-                }
-            }
-
-            if (activePlacements.isEmpty()) {
-                return "global";
-            }
-            if (activePlacements.size() == 1) {
-                return activePlacements.get(0).getName();
-            }
-
-            // Łączenie nazw wielu schematów, dokładnie tak jak robi to InputHandler
-            StringBuilder sb = new StringBuilder();
-            int count = 0;
-            for (SchematicPlacement p : activePlacements) {
-                if (count > 0)
-                    sb.append(", ");
-                sb.append(p.getName());
-                count++;
-                if (count >= 3) {
-                    int remaining = activePlacements.size() - 3;
-                    if (remaining > 0) {
-                        sb.append(" (+").append(remaining).append(" more)");
-                    }
-                    break;
-                }
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            return "global";
-        }
-    }
-
     @Inject(method = "init", at = @At("RETURN"))
     protected void onInit(CallbackInfo ci) {
         AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
@@ -134,9 +88,6 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
         if (cid == null)
             return;
 
-        String placement = getActivePlacementName();
-        boolean isMarked = ContainerDataManager.isContainerMarked(placement, cid);
-
         int guiLeft = (screen.width - 176) / 2;
         int guiTop = (screen.height - 166) / 2;
 
@@ -146,8 +97,8 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
         int btnY = guiTop - 50; // Przycisk pojawi się nad ekwipunkiem gracza, po prawej stronie
 
         this.bml_TrackingButtonInstance = Button.builder(Component.literal(""), button -> {
-            boolean marked = !ContainerDataManager.isContainerMarked(placement, cid);
-            ContainerDataManager.setContainerMarked(placement, cid, marked);
+            boolean marked = !ContainerDataManager.isContainerMarked(cid);
+            ContainerDataManager.setContainerMarked(cid, marked);
         }).bounds(btnX, btnY, btnWidth, btnHeight).build();
 
         this.addRenderableWidget(this.bml_TrackingButtonInstance);
@@ -158,7 +109,7 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
         if (this.bml_TrackingButtonInstance != null && this.bml_TrackingButtonInstance.visible) {
             String cid = getContainerId();
             if (cid != null) {
-                boolean isMarked = ContainerDataManager.isContainerMarked(getActivePlacementName(), cid);
+                boolean isMarked = ContainerDataManager.isContainerMarked(cid);
                 if (isMarked) {
                     guiGraphics.item(new ItemStack(net.minecraft.world.item.Items.REDSTONE_TORCH), this.bml_TrackingButtonInstance.getX() + 2, this.bml_TrackingButtonInstance.getY() + 2);
                 }
@@ -173,9 +124,8 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
         if (cid == null)
             return;
 
-        String placement = getActivePlacementName();
         // Zapisujemy tylko jeśli skrzynka jest aktualnie oznaczona do śledzenia
-        if (!ContainerDataManager.isContainerMarked(placement, cid)) {
+        if (!ContainerDataManager.isContainerMarked(cid)) {
             return;
         }
 
@@ -197,6 +147,6 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
             }
         }
 
-        ContainerDataManager.updateContainerItems(placement, cid, contents);
+        ContainerDataManager.updateContainerItems(cid, contents);
     }
 }
