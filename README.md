@@ -2,18 +2,20 @@
 
 A **Litematica add-on** for Fabric that turns the material list into a full build-tracking tool.
 
-> Requires [Litematica](https://modrinth.com/mod/litematica) and [MaLiLib](https://modrinth.com/mod/malilib). Client-side; works in singleplayer and on servers.
+Track what you've placed, what's stored in your chests, and what each teammate is working on — all from one upgraded material list. Works in singleplayer and on servers, solo or in a party.
+
+> Requires [Litematica](https://modrinth.com/mod/litematica) and [MaLiLib](https://modrinth.com/mod/malilib) (plus Fabric API). Client-side.
 
 ## Features
 
-- **Material checklist** — tick off items per schematic; state is saved per server.
-- **Tracked chests** — mark chests as storage; their contents count toward a "stored" total on the list.
+- **Material checklist** — tick off items per schematic as you gather them; state is saved **per server**.
+- **Tracked chests → live "stored" counts** — mark any chest as storage and its contents are counted into a *Stored* column, so you instantly see what you still need vs. what's already in bulk storage.
   - 🔍 **Preview** a tracked chest's remembered contents without walking to it.
-  - 💡 **Highlight** tracked chests in the world (visible through walls).
-- **Targeted-items HUD** — right-click items to target them; a compact top-right HUD shows `have / need` and drops items once you've gathered enough.
-- **Party sync** — invite players, share schematic placements, and sync checklist + stored progress (via a server plugin or the built-in Fabric server relay).
-- **Filtering & sorting** — search, hide fully-placed/stored/checked, sort by any column, filter the list to a specific player's targets.
-- Configurable **keybinds** for the list, chests, config, party, highlight toggle, and HUD.
+  - 💡 **Highlight** tracked chests in the world — visible **through walls**.
+- **Targeted-items HUD** — right-click items to *target* them, then toggle a compact top-right HUD showing `have / need`. Items drop off the HUD automatically once you've gathered enough. Works **solo**.
+- **Party sync** — invite players, share schematic placements, and sync checklist + stored progress between everyone. See which teammates are focusing which items (colored borders + player heads on the list).
+- **Filtering & sorting** — search, hide fully-placed / fully-stored / checked items, sort by any column, filter the list to a specific player's targets.
+- **Localization** — English (default) and Polish; switch in *Options → Language*.
 
 ## Default keybinds
 
@@ -28,6 +30,15 @@ A **Litematica add-on** for Fabric that turns the material list into a full buil
 | `,` | Open config |
 
 All keybinds are rebindable in the config screen.
+
+## Party sync — server setup
+
+All single-player features work without any server setup. **Party sync** additionally needs the server to relay BML packets. Two options:
+
+- **Fabric server:** drop this same mod into the server's `mods/` folder (with Fabric API). No extra download.
+- **Bukkit-family server** (Paper, Purpur, Spigot, …): install the companion **[BML Integration plugin](https://github.com/Dowimixworsafe/Better-Material-List-Sync-Plugin)**.
+
+Either way, party members just need the **same mod version** on their clients.
 
 ## Building
 
