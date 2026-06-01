@@ -91,7 +91,7 @@ public class GuiParty extends GuiBase {
         if (!invites.isEmpty()) {
             y += 16; // room for the section header
             for (PartyManager.PendingInvite inv : invites) {
-                this.addButton(new ButtonGeneric(left + PANEL_W - 150, y, 70, 20, "§aAkceptuj"),
+                this.addButton(new ButtonGeneric(left + PANEL_W - 150, y, 70, 20, "§a" + com.example.util.BmlLang.tr("bml.party.accept")),
                         (b, mb) -> { PartyManager.acceptInvite(inv.partyId()); reopen(); });
                 this.addButton(new ButtonGeneric(left + PANEL_W - 76, y, 76, 20, "§c" + com.example.util.BmlLang.tr("bml.party.decline")),
                         (b, mb) -> { PartyManager.declineInvite(inv.partyId()); reopen(); });
@@ -108,10 +108,10 @@ public class GuiParty extends GuiBase {
             for (String member : members) {
                 if (!member.equals(self)) {
                     // Sync (anyone can request); Kick admin-only.
-                    this.addButton(new ButtonGeneric(left + PANEL_W - 120, y, 56, 18, "§bSync"),
+                    this.addButton(new ButtonGeneric(left + PANEL_W - 120, y, 56, 18, "§b" + com.example.util.BmlLang.tr("bml.party.sync")),
                             (b, mb) -> PlacementSyncHelper.requestPlacementsFromPlayer(member));
                     if (PartyManager.isAdmin()) {
-                        this.addButton(new ButtonGeneric(left + PANEL_W - 60, y, 56, 18, "§cKick"),
+                        this.addButton(new ButtonGeneric(left + PANEL_W - 60, y, 56, 18, "§c" + com.example.util.BmlLang.tr("bml.party.kick")),
                                 (b, mb) -> { PartyManager.kickPlayer(member); reopen(); });
                     }
                 }
@@ -131,7 +131,8 @@ public class GuiParty extends GuiBase {
 
         // ── Invite player ──
         y += 16; // "Invite player" header
-        this.inviteField = new EditBox(this.font, left, y, PANEL_W - 90, 20, Component.literal("Nick"));
+        this.inviteField = new EditBox(this.font, left, y, PANEL_W - 90, 20,
+                Component.literal(com.example.util.BmlLang.tr("bml.party.nick_hint")));
         this.addRenderableWidget(this.inviteField);
         this.addButton(new ButtonGeneric(left + PANEL_W - 84, y, 84, 20, "§a" + com.example.util.BmlLang.tr("bml.party.invite")), (b, mb) -> {
             if (this.inviteField != null && !this.inviteField.getValue().isBlank()) {
@@ -188,24 +189,26 @@ public class GuiParty extends GuiBase {
 
         int y = TOP;
 
-        // ── Zaproszenia ──
+        // ── Pending invites ──
         List<PartyManager.PendingInvite> invites = PartyManager.getPendingInvites();
         if (!invites.isEmpty()) {
             sectionHeader(ctx, left, y, "§e" + com.example.util.BmlLang.tr("bml.party.pending_invites"));
             y += 16;
             for (PartyManager.PendingInvite inv : invites) {
                 rowBg(ctx, left, y);
-                ctx.drawString(this.font, "§fOd: §e" + inv.fromNick(), left + 4, y + 5, 0xFFFFFFFF, false);
+                ctx.drawString(this.font, "§f" + com.example.util.BmlLang.tr("bml.party.invite_from", "§e" + inv.fromNick()),
+                        left + 4, y + 5, 0xFFFFFFFF, false);
                 y += ROW;
             }
             y += SECTION_GAP;
         }
 
-        // ── Twoje party ──
+        // ── Your party ──
         if (PartyManager.isInParty()) {
             String adminNick = PartyManager.getAdminNick();
-            sectionHeader(ctx, left, y,
-                    adminNick != null ? "§a👥 Party gracza §f" + adminNick : "§a👥 Twoje Party");
+            sectionHeader(ctx, left, y, "§a" + (adminNick != null
+                    ? com.example.util.BmlLang.tr("bml.party.of_player", "§f" + adminNick)
+                    : com.example.util.BmlLang.tr("bml.party.your_party")));
             y += 16;
             String self = selfNick();
             int idx = 0;
@@ -220,14 +223,14 @@ public class GuiParty extends GuiBase {
                 boolean isAdmin = adminNick != null && member.equals(adminNick);
                 boolean isSelf = member.equals(self);
                 String label = (isSelf ? "§b" : "§f") + member
-                        + (isAdmin ? " §6★ Admin" : "")
-                        + (isSelf ? " §7(Ty)" : "");
+                        + (isAdmin ? " §6" + com.example.util.BmlLang.tr("bml.party.admin") : "")
+                        + (isSelf ? " §7" + com.example.util.BmlLang.tr("bml.party.you") : "");
                 ctx.drawString(this.font, label, left + 22, y + 5, 0xFFFFFFFF, false);
                 y += ROW;
                 idx++;
             }
             y += SECTION_GAP;
-            // miejsce na przycisk Leave (rysowany w initGui)
+            // room for the Leave button (drawn in initGui)
             y += 20 + SECTION_GAP;
         } else {
             sectionHeader(ctx, left, y, "§7" + com.example.util.BmlLang.tr("bml.party.not_in_party"));
@@ -237,13 +240,21 @@ public class GuiParty extends GuiBase {
         // ── Invite player ──
         sectionHeader(ctx, left, y, "§a" + com.example.util.BmlLang.tr("bml.party.invite_player"));
         y += 16;
-        // the inviteField renders itself (addRenderableWidget); leave room for it
+        // The vanilla EditBox isn't auto-rendered inside a malilib GuiBase, so draw a
+        // visible field background + the widget itself here.
+        if (this.inviteField != null) {
+            int fx = this.inviteField.getX(), fy = this.inviteField.getY();
+            int fw = this.inviteField.getWidth(), fh = this.inviteField.getHeight();
+            ctx.fill(fx - 1, fy - 1, fx + fw + 1, fy + fh + 1, 0xFF000000); // border
+            ctx.fill(fx, fy, fx + fw, fy + fh, 0xFF202020);                 // field bg
+            this.inviteField.extractWidgetRenderState(drawContext, mouseX, mouseY, partialTicks);
+        }
         y += 20 + SECTION_GAP;
 
-        // ── Gracze online ──
+        // ── Online players ──
         List<PlayerInfo> online = onlineInvitable();
         int maxPages = Math.max(1, (int) Math.ceil(online.size() / (double) ONLINE_PER_PAGE));
-        sectionHeader(ctx, left, y, "§b🌐 Gracze online §7(" + online.size() + ")");
+        sectionHeader(ctx, left, y, "§b" + com.example.util.BmlLang.tr("bml.party.online_players", online.size()));
         y += 16;
         int from = onlinePlayersPage * ONLINE_PER_PAGE;
         int to = Math.min(from + ONLINE_PER_PAGE, online.size());

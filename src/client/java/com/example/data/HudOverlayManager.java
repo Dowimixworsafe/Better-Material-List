@@ -77,7 +77,9 @@ public final class HudOverlayManager {
 
         List<SchematicPlacement> placements =
                 DataManager.getSchematicPlacementManager().getAllSchematicsPlacements();
-        List<MaterialListEntry> entries = InputHandler.collectMaterialsFromPlacements(placements);
+        // Use the same cache-fallback path as the main GUI, so the HUD survives a relog
+        // (Litematica's live list is empty until chunks finish loading).
+        List<MaterialListEntry> entries = InputHandler.collectEntriesWithCacheFallback(placements);
         Minecraft mc = Minecraft.getInstance();
         if (entries == null || entries.isEmpty() || mc.player == null) {
             rows = new ArrayList<>();

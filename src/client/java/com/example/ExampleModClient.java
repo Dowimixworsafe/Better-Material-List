@@ -188,7 +188,7 @@ public class ExampleModClient implements ClientModInitializer {
 	/**
 	 * Draws the targeted-items HUD in the top-right corner: icon + how much
 	 * I have / how much I need. Hidden when disabled, when in a screen/F3, or when
-	 * brak wierszy.
+	 * there are no rows.
 	 */
 	private static void renderTargetedItemsHud(net.minecraft.client.gui.GuiGraphicsExtractor drawContext) {
 		if (!HudOverlayManager.isEnabled()) return;

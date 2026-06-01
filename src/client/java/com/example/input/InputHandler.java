@@ -141,27 +141,10 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
         SchematicPlacementManager manager = DataManager.getSchematicPlacementManager();
         List<SchematicPlacement> placements = manager.getAllSchematicsPlacements();
 
-        List<MaterialListEntry> entriesToShow = new ArrayList<>();
-        String placementLabel = "Brak schematu";
-        boolean isCached = false;
-
-        if (placements != null && !placements.isEmpty()) {
-            List<MaterialListEntry> freshEntries = collectMaterialsFromPlacements(placements);
-            String cacheKey = MaterialCacheManager.getCacheKey(placements);
-
-            placementLabel = buildPlacementLabel(placements);
-
-            if (!freshEntries.isEmpty()) {
-                entriesToShow = freshEntries;
-                MaterialCacheManager.saveCache(cacheKey, freshEntries);
-            } else {
-                List<MaterialListEntry> cached = MaterialCacheManager.loadCache(cacheKey);
-                if (cached != null && !cached.isEmpty()) {
-                    entriesToShow = cached;
-                    isCached = true;
-                }
-            }
-        }
+        List<MaterialListEntry> entriesToShow = collectEntriesWithCacheFallback(placements);
+        String placementLabel = (placements != null && !placements.isEmpty())
+                ? buildPlacementLabel(placements) : "Brak schematu";
+        boolean isCached = lastCollectWasCached;
 
         if (entriesToShow != null && !entriesToShow.isEmpty() && Minecraft.getInstance().player != null) {
             fi.dy.masa.litematica.materials.MaterialListUtils.updateAvailableCounts(entriesToShow,
@@ -170,6 +153,35 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
         }
 
         GuiBase.openGui(new GuiBetterMaterialList(placementLabel, entriesToShow, isCached, placements));
+    }
+
+    // Set by collectEntriesWithCacheFallback: whether the last result came from cache.
+    private static boolean lastCollectWasCached = false;
+
+    /**
+     * Returns the material-list entries for the given placements, falling back to the
+     * on-disk cache when Litematica's live data is empty (e.g. right after a relog while
+     * chunks are still loading). Fresh data is saved to the cache for next time.
+     *
+     * Used by both the main GUI and the targeted-items HUD so they behave consistently.
+     */
+    public static List<MaterialListEntry> collectEntriesWithCacheFallback(List<SchematicPlacement> placements) {
+        lastCollectWasCached = false;
+        List<MaterialListEntry> result = new ArrayList<>();
+        if (placements == null || placements.isEmpty()) return result;
+
+        List<MaterialListEntry> fresh = collectMaterialsFromPlacements(placements);
+        String cacheKey = MaterialCacheManager.getCacheKey(placements);
+        if (!fresh.isEmpty()) {
+            MaterialCacheManager.saveCache(cacheKey, fresh);
+            return fresh;
+        }
+        List<MaterialListEntry> cached = MaterialCacheManager.loadCache(cacheKey);
+        if (cached != null && !cached.isEmpty()) {
+            lastCollectWasCached = true;
+            return cached;
+        }
+        return result;
     }
 
     public static void addCachedContainerItems(List<MaterialListEntry> entries) {

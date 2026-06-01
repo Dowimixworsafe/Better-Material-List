@@ -55,11 +55,12 @@ public class FocusManager {
     private static final Set<String> filterPlayers = new HashSet<>();
     // playerNick → stable color index
     private static final Map<String, Integer> colorAssignment = new LinkedHashMap<>();
-    // 3-mode focus: 0=Off, 1=Mine, 2=All
+    // 3-mode focus: 0=Off, 1=Mine, 2=All. Defaults to All so party targets are visible
+    // out of the box.
     public static final int MODE_OFF  = 0;
     public static final int MODE_MINE = 1;
     public static final int MODE_ALL  = 2;
-    private static int focusMode = MODE_OFF;
+    private static int focusMode = MODE_ALL;
 
     // ── State mutations ───────────────────────────────────────────────────────
 
@@ -110,7 +111,7 @@ public class FocusManager {
         hiddenPlayers.clear();
         filterPlayers.clear();
         colorAssignment.clear();
-        focusMode = MODE_OFF;
+        focusMode = MODE_ALL;
     }
 
     // ── Queries ───────────────────────────────────────────────────────────────
