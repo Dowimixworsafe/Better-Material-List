@@ -158,7 +158,7 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
 
         String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
 
-        // Border MOICH targetów — zawsze, niezależnie od party/trybu focus (PPM = zaznaczenie).
+        // Border for MY targets — always, regardless of party/focus mode (right-click = target).
         if (FocusManager.isLocalPlayerTargetingRaw(itemId) && Minecraft.getInstance().player != null) {
             int c = FocusManager.getColor(Minecraft.getInstance().player.getGameProfile().name());
             guiContext.fill(iconX - 1, iconY - 1, iconX + 17, iconY,      c); // top
@@ -167,7 +167,7 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
             guiContext.fill(iconX + 16, iconY,     iconX + 17, iconY + 16, c); // right
         }
 
-        // Główki innych graczy targetujących ten item — tylko w party i gdy focus widoczny.
+        // Heads of other players targeting this item — only in a party and when focus is visible.
         if (com.example.party.PartyManager.isInParty() && FocusManager.isFocusVisible()) {
             List<FocusManager.PlayerFocus> others = FocusManager.getTargetersWithNames(itemId);
             for (int di = 0; di < Math.min(others.size(), 3); di++) {

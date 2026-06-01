@@ -21,11 +21,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Podgląd zapamiętanej zawartości śledzonej skrzyni (z {@link ContainerDataManager}).
- * Renderuje sloty jak prawdziwa skrzynia, używając malilib {@link InventoryOverlay}.
+ * Preview of a tracked chest's remembered contents (from {@link ContainerDataManager}).
+ * Renders slots like a real chest using malilib {@link InventoryOverlay}.
  *
- * Dane pochodzą z ostatniego skanu skrzyni (to samo, co liczy się do "stored"), więc
- * działa nawet gdy skrzynia jest daleko / chunk niezaładowany.
+ * Data comes from the last chest scan (the same as counts toward "stored"), so it
+ * works even when the chest is far away / its chunk is unloaded.
  */
 @Environment(EnvType.CLIENT)
 public class GuiChestPreview extends GuiBase {
@@ -39,11 +39,11 @@ public class GuiChestPreview extends GuiBase {
     public GuiChestPreview(String containerId, String returnPlacementName) {
         this.containerId = containerId;
         this.returnPlacementName = returnPlacementName;
-        this.title = "Zawartość skrzyni";
+        this.title = com.example.util.BmlLang.tr("bml.preview.title");
         buildContainer();
     }
 
-    /** Zamienia zapamiętaną mapę item->count na SimpleContainer (po 64 na slot). */
+    /** Turns the remembered item->count map into a SimpleContainer (max stack per slot). */
     private void buildContainer() {
         Map<String, Integer> contents = ContainerDataManager.getContainerContents(this.containerId);
 
@@ -61,8 +61,8 @@ public class GuiChestPreview extends GuiBase {
             }
         }
 
-        // Skrzynia ma 27 slotów; podwójna 54. Dobieramy najmniejszy pasujący rozmiar
-        // (wielokrotność 27), żeby zmieścić wszystkie stacki.
+        // A chest has 27 slots; a double chest 54. Pick the smallest fitting size
+        // (a multiple of 27) to fit all stacks.
         int size = 27;
         while (stacks.size() > size) size += 27;
         this.type = InventoryOverlayType.GENERIC;
@@ -77,7 +77,7 @@ public class GuiChestPreview extends GuiBase {
     @Override
     public void initGui() {
         super.initGui();
-        ButtonGeneric btnBack = new ButtonGeneric(6, 6, 60, 20, "§e← Wróć");
+        ButtonGeneric btnBack = new ButtonGeneric(6, 6, 60, 20, "§e" + com.example.util.BmlLang.tr("bml.gui.back"));
         this.addButton(btnBack, (b, mb) -> GuiBase.openGui(new GuiBmlChests(this.returnPlacementName)));
     }
 
@@ -106,14 +106,14 @@ public class GuiChestPreview extends GuiBase {
                 this.props.slotsPerRow, 0, this.container.getContainerSize());
 
         if (this.container.isEmpty()) {
-            String msg = "§7(Skrzynia pusta lub jeszcze niezeskanowana)";
+            String msg = "§7" + com.example.util.BmlLang.tr("bml.preview.empty");
             ctx.drawString(this.font, msg, x, y + this.props.height + 6, 0xFFFFFFFF, false);
         }
     }
 
     @Override
     protected void drawTitle(GuiContext ctx, int mouseX, int mouseY, float partialTicks) {
-        // Tytuł wyśrodkowany u góry — spójnie z innymi podekranami, omija przycisk "Wróć".
+        // Centered title at the top — consistent with other sub-screens, avoids the "Back" button.
         String t = this.getTitleString();
         int tx = (this.getScreenWidth() - this.getStringWidth(t)) / 2;
         this.drawString(ctx, t, tx, 8, -1);

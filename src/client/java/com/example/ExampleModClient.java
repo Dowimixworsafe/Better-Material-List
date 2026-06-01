@@ -42,27 +42,27 @@ public class ExampleModClient implements ClientModInitializer {
 	private static int placementCheckTick = 0;
 	private static final int PLACEMENT_CHECK_INTERVAL = 100; // ~5s at 20 TPS
 
-	// Handshake: odliczamy ticki po wejściu na świat zamiast tworzyć osobny wątek.
-	// -1 = nieaktywne; >=0 = liczy w górę do HELLO_DELAY_TICKS, potem wysyła BML_HELLO.
+	// Handshake: we count ticks after joining the world instead of spawning a thread.
+	// -1 = inactive; >=0 = counts up to HELLO_DELAY_TICKS, then sends BML_HELLO.
 	private static int helloCountdown = -1;
 	private static final int HELLO_DELAY_TICKS = 40; // ~2s at 20 TPS
 
-	// Debounce zapisu danych: flush na dysk co ~1s, jeśli coś się zmieniło.
+	// Write debounce: flush to disk every ~1s if something changed.
 	private static int saveTick = 0;
 	private static final int SAVE_INTERVAL = 20; // ~1s at 20 TPS
 
-	// Przeliczanie HUD zaznaczonych itemów (gdy włączony) co ~1s.
+	// Recompute the targeted-items HUD (when enabled) every ~1s.
 	private static int hudTick = 0;
 	private static final int HUD_INTERVAL = 20;
 
-	// Kolor ramki podświetlonych skrzyń (jasny zielony, pełne alpha).
+	// Outline color for highlighted chests (bright green, full alpha).
 	private static final Color4f CHEST_HIGHLIGHT_COLOR = Color4f.fromColor(0x55FF55, 1.0f);
 
 	@Override
 	public void onInitializeClient() {
 		LOGGER.info("[BetterMaterialList] Client initializing...");
 
-		// Konfiguracja ogólna malilib
+		// General malilib config.
 		ModConfig config = new ModConfig();
 		ConfigManager.getInstance().registerConfigHandler("bettermateriallist", config);
 		config.load();
@@ -71,17 +71,17 @@ public class ExampleModClient implements ClientModInitializer {
 		InputHandler.getInstance().registerKeyCallbacks();
 		InputEventHandler.getKeybindManager().registerKeybindProvider(InputHandler.getInstance());
 
-		// Rejestracja receivera dla pakietów BML (party + sync)
+		// Register the receiver for BML packets (party + sync).
 		BmlClientNetworking.registerReceiver();
 
-		// Rejestracja eventów sieciowych
+		// Register networking lifecycle events.
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			LOGGER.info("[BetterMaterialList] Joined world. Loading data...");
 			ContainerDataManager.load();
 			MaterialStateManager.load();
 			com.example.party.FocusManager.load(); // moje targety + flaga HUD (per serwer)
 			// Handshake – sprawdza czy serwer ma BML Mod/Plugin. Odraczamy o ~2s
-			// (na ticku klienta, bez osobnego wątku), żeby serwer zdążył się zainicjować.
+			// (on a client tick, no separate thread) so the server has time to initialize.
 			helloCountdown = 0;
 		});
 
@@ -89,7 +89,7 @@ public class ExampleModClient implements ClientModInitializer {
 			LOGGER.info("[BetterMaterialList] Disconnected. Saving and clearing data...");
 			ContainerDataManager.flush();
 			MaterialStateManager.flush();
-			// Czyścimy pamięć, by nie brudzić stanu przy zmianie serwera
+			// Clear memory so state doesn't leak across servers.
 			ContainerDataManager.clear();
 			MaterialStateManager.clear();
 			// Reset stanu party i flagi serverSupported
@@ -105,7 +105,7 @@ public class ExampleModClient implements ClientModInitializer {
 			HudOverlayManager.disable();
 		});
 
-		// Podświetlanie śledzonych skrzyń w świecie (przez ściany), sterowane z GuiBmlChests.
+		// In-world highlighting of tracked chests (through walls), driven by GuiBmlChests.
 		LevelRenderEvents.AFTER_TRANSLUCENT_FEATURES.register(context -> {
 			if (ChestHighlightManager.all().isEmpty()) return;
 			Minecraft mc = Minecraft.getInstance();
@@ -115,25 +115,25 @@ public class ExampleModClient implements ClientModInitializer {
 			float partialTicks = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 
 			for (String containerId : ChestHighlightManager.all()) {
-				// Rysujemy tylko skrzynie z bieżącego wymiaru (kordy z innego wymiaru
-				// nie mają sensu w obecnej kamerze).
+				// Draw only chests in the current dimension (coords from another dimension
+				// make no sense for the current camera).
 				String dim = ChestHighlightManager.dimensionOf(containerId);
 				if (dim != null && !dim.equals(currentDim)) continue;
 				BlockPos pos = ChestHighlightManager.posOf(containerId);
 				if (pos == null) continue;
-				// true = render przez ściany (pipeline NO_DEPTH).
+				// true = render through walls (NO_DEPTH pipeline).
 				RenderUtils.renderBlockOutline(pos, 0.002f, 2.0f, CHEST_HIGHLIGHT_COLOR, true);
 			}
 		});
 
-		// HUD w prawym górnym rogu: zaznaczone (targetowane) itemy, których brakuje.
+		// Top-right HUD: targeted items that are still missing.
 		HudElementRegistry.addLast(
 				Identifier.fromNamespaceAndPath("bml", "targeted_items_hud"),
 				(drawContext, tickCounter) -> renderTargetedItemsHud(drawContext));
 
 		// Schematic placement autosync: detect moves/adds/removes and broadcast to party
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
-			// Handshake po wejściu na świat (zastępuje dawny new Thread + sleep).
+			// Handshake after joining the world (replaces the old new Thread + sleep).
 			if (helloCountdown >= 0) {
 				if (++helloCountdown >= HELLO_DELAY_TICKS) {
 					helloCountdown = -1;
@@ -141,14 +141,14 @@ public class ExampleModClient implements ClientModInitializer {
 				}
 			}
 
-			// Debounce zapisu danych — niezależny od party/serverSupported.
+			// Write debounce — independent of party/serverSupported.
 			if (++saveTick >= SAVE_INTERVAL) {
 				saveTick = 0;
 				ContainerDataManager.flush();
 				MaterialStateManager.flush();
 			}
 
-			// Przeliczanie HUD zaznaczonych itemów (tylko gdy włączony).
+			// Recompute the targeted-items HUD (only when enabled).
 			if (HudOverlayManager.isEnabled() && ++hudTick >= HUD_INTERVAL) {
 				hudTick = 0;
 				HudOverlayManager.recompute();
@@ -186,15 +186,15 @@ public class ExampleModClient implements ClientModInitializer {
 	}
 
 	/**
-	 * Rysuje HUD zaznaczonych (targetowanych) itemów w prawym górnym rogu: ikona + ile
-	 * mam / ile potrzeba. Niewidoczny gdy wyłączony, gdy gracz jest w GUI/F3, albo gdy
+	 * Draws the targeted-items HUD in the top-right corner: icon + how much
+	 * I have / how much I need. Hidden when disabled, when in a screen/F3, or when
 	 * brak wierszy.
 	 */
 	private static void renderTargetedItemsHud(net.minecraft.client.gui.GuiGraphicsExtractor drawContext) {
 		if (!HudOverlayManager.isEnabled()) return;
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.player == null || mc.options.hideGui) return;
-		// Nie zasłaniaj ekranów (np. otwartej listy materiałów) — HUD tylko w grze.
+		// Don't cover screens (e.g. the open material list) — HUD only in-game.
 		if (mc.screen != null) return;
 
 		List<HudOverlayManager.Row> rows = HudOverlayManager.getRows();
@@ -206,7 +206,7 @@ public class ExampleModClient implements ClientModInitializer {
 		int rowH = 18;
 		int pad = 4;
 		int iconW = 16;
-		// Szerokość panelu = ikona + najszerszy tekst "have / need".
+		// Panel width = icon + widest "have / need" text.
 		int maxTextW = font.width("Targety");
 		for (HudOverlayManager.Row r : rows) {
 			maxTextW = Math.max(maxTextW, font.width(r.have() + " / " + (r.have() + r.need())));
@@ -218,10 +218,10 @@ public class ExampleModClient implements ClientModInitializer {
 		int x = screenW - panelW - 4;
 		int y = 4;
 
-		// Tło.
+		// Background.
 		ctx.fill(x, y, x + panelW, y + panelH, 0xC0101010);
 		ctx.fill(x, y, x + panelW, y + 1, 0xFF55FF55);
-		ctx.drawString(font, "§aTargety §7(" + rows.size() + ")", x + pad, y + pad, 0xFFFFFFFF, false);
+		ctx.drawString(font, "§a" + com.example.util.BmlLang.tr("bml.hud.title") + " §7(" + rows.size() + ")", x + pad, y + pad, 0xFFFFFFFF, false);
 
 		int ry = y + pad + 12;
 		for (HudOverlayManager.Row r : rows) {
@@ -229,7 +229,7 @@ public class ExampleModClient implements ClientModInitializer {
 			ctx.renderItem(stack, x + pad, ry);
 			ctx.renderItemDecorations(font, stack, x + pad, ry);
 			int total = r.have() + r.need();
-			// have/total: czerwone gdy czegoś brak.
+			// have/total.
 			String txt = "§f" + r.have() + " §7/ §f" + total;
 			ctx.drawString(font, txt, x + pad + iconW + 4, ry + (iconW - 8) / 2, 0xFFFFFFFF, false);
 			ry += rowH;

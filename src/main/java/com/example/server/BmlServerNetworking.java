@@ -13,8 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
- * Główny kurier pakietów po stronie serwera.
- * Odbiera, sprawdza intencje i przesyła dalej do odpowiednich członków party.
+ * Main server-side packet courier.
+ * Receives, validates intent, and forwards to the appropriate party members.
  */
 public class BmlServerNetworking {
 
@@ -40,7 +40,7 @@ public class BmlServerNetworking {
             UUID partyId = ServerPartyManager.getPartyIdForPlayer(playerUUID);
             if (partyId != null) {
                 if (ServerPartyManager.isLeader(partyId, playerUUID)) {
-                    // Admin wychodzi zebrania - wszystkie powiązania ulegają zniszczeniu
+                    // Admin leaves — the whole party is disbanded.
                     for (UUID member : ServerPartyManager.getPartyMembers(partyId)) {
                         if (!member.equals(playerUUID)) {
                             ServerPlayer mPlayer = server.getPlayerList().getPlayer(member);
@@ -55,10 +55,10 @@ public class BmlServerNetworking {
                     ServerPartyManager.disbandParty(partyId);
                     LOGGER.info("[BML-Server] Party {} disbanded due to leader {} disconnect.", partyId, player.getName().getString());
                 } else {
-                    // Zwykły gracz wychodzi
+                    // A regular member leaves.
                     ServerPartyManager.removePlayerFromParty(partyId, playerUUID);
-                    // Symulujemy kontekst sieciowy potrzebny w broadcastowaniu za pomocą wywołania anonimowego lub
-                    // przepisanej logiki broadcast - tutaj manualnie wysyłamy update:
+                    // Build the party update manually and send it to remaining members
+                    // (no networking context needed here):
                     JsonObject update = new JsonObject();
                     update.addProperty("type", BmlPackets.PARTY_UPDATE);
                     update.addProperty("partyId", partyId.toString());
@@ -251,7 +251,7 @@ public class BmlServerNetworking {
                 }
             }
             default -> {
-                // Pozostałe pakiety (inne synchronizacje)
+                // Other packets (data sync) — relay to the party.
                 if (json.has("partyId")) {
                     UUID partyId = UUID.fromString(json.get("partyId").getAsString());
                     for (UUID memberUuid : ServerPartyManager.getPartyMembers(partyId)) {

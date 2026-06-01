@@ -12,11 +12,11 @@ public class ExampleMod implements ModInitializer {
 	public void onInitialize() {
 		LOGGER.info("[BetterMaterialList] Main mod initialized!");
 
-		// Rozpoznawanie globalnego formatu ładunków CustomPacketPayload
+		// Register the CustomPacketPayload type for both directions.
 		net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry.clientboundPlay().register(com.example.network.BmlPackets.BmlPayload.TYPE, com.example.network.BmlPackets.BmlPayload.CODEC);
 		net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry.serverboundPlay().register(com.example.network.BmlPackets.BmlPayload.TYPE, com.example.network.BmlPackets.BmlPayload.CODEC);
 
-		// Uruchomienie "kuriera" serwerowego, który rozsyła paczki między członkami partii
+		// Server-side relay that forwards packets between party members.
 		com.example.server.BmlServerNetworking.register();
 	}
 }

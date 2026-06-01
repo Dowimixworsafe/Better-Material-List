@@ -182,8 +182,8 @@ public class GuiBetterMaterialList
 
         // Top bar: Party | Layout | Auto | Refresh | Settings | Clear Cache
         String partyText = com.example.network.BmlClientNetworking.serverSupported
-                ? (com.example.party.PartyManager.isInParty() ? "§a👥 Party" : "§e👥 Party")
-                : "§7👥 No Server";
+                ? (com.example.party.PartyManager.isInParty() ? "§a👥 " + com.example.util.BmlLang.tr("bml.list.party") : "§e👥 " + com.example.util.BmlLang.tr("bml.list.party"))
+                : "§7👥 " + com.example.util.BmlLang.tr("bml.list.no_server");
         this.addButton(new ButtonGeneric(startX, 6, 78, 20, partyText),
                 (b, mb) -> fi.dy.masa.malilib.gui.GuiBase.openGui(new GuiParty(this.placementName)));
 
@@ -202,11 +202,11 @@ public class GuiBetterMaterialList
 
         // Auto-refresh toggle
         this.btnAutoRefresh = new ButtonGeneric(startX + 140, 6, 60, 20,
-                globalAutoRefresh ? "§aAuto §2ON" : "§cAuto §4OFF");
+                globalAutoRefresh ? "§a" + com.example.util.BmlLang.tr("bml.list.auto_on") : "§c" + com.example.util.BmlLang.tr("bml.list.auto_off"));
         this.addButton(this.btnAutoRefresh, (b, mb) -> {
             globalAutoRefresh = !globalAutoRefresh;
             autoRefreshTick = 0;
-            this.btnAutoRefresh.setDisplayString(globalAutoRefresh ? "§aAuto §2ON" : "§cAuto §4OFF");
+            this.btnAutoRefresh.setDisplayString(globalAutoRefresh ? "§a" + com.example.util.BmlLang.tr("bml.list.auto_on") : "§c" + com.example.util.BmlLang.tr("bml.list.auto_off"));
         });
 
         // Manual refresh (triggers Litematica task — shows notification, but user-initiated)
@@ -214,18 +214,18 @@ public class GuiBetterMaterialList
         this.addButton(btnRefresh, (b, mb) -> triggerFullRefresh());
 
         // Chests
-        this.btnChests = new ButtonGeneric(startX + 228, 6, 68, 20, "   §bChests");
+        this.btnChests = new ButtonGeneric(startX + 228, 6, 68, 20, "   §b" + com.example.util.BmlLang.tr("bml.list.chests"));
         this.addButton(this.btnChests,
                 (b, mb) -> fi.dy.masa.malilib.gui.GuiBase.openGui(new GuiBmlChests(this.placementName)));
 
         // Schematics folder
-        this.btnSchematics = new ButtonGeneric(startX + 300, 6, 90, 20, "   §eSchematics");
+        this.btnSchematics = new ButtonGeneric(startX + 300, 6, 90, 20, "   §e" + com.example.util.BmlLang.tr("bml.list.schematics"));
         this.addButton(this.btnSchematics, (b, mb) -> openSchematicsFolder());
 
         // Settings & Clear Cache (top-right)
-        this.addButton(new ButtonGeneric(startX + guiWidth - 126, 6, 62, 20, "§eSettings"),
+        this.addButton(new ButtonGeneric(startX + guiWidth - 126, 6, 62, 20, "§e" + com.example.util.BmlLang.tr("bml.list.settings")),
                 (b, mb) -> fi.dy.masa.malilib.gui.GuiBase.openGui(new GuiConfigs()));
-        this.addButton(new ButtonGeneric(startX + guiWidth - 60, 6, 60, 20, "§c🗑 Cache"),
+        this.addButton(new ButtonGeneric(startX + guiWidth - 60, 6, 60, 20, "§c🗑 " + com.example.util.BmlLang.tr("bml.list.cache")),
                 (b, mb) -> clearCache());
 
         // Bottom bar: search on its own row when narrow, filters + focus always on one row
@@ -266,10 +266,10 @@ public class GuiBetterMaterialList
         });
 
         ButtonGeneric btnChecked = new ButtonGeneric(filterX + 120, row2Y, 70, 20,
-                globalHideChecked ? "§b✔ §aON" : "§b✔ §cOFF");
+                globalHideChecked ? "§b✔ §a" + com.example.util.BmlLang.tr("bml.list.on") : "§b✔ §c" + com.example.util.BmlLang.tr("bml.list.off"));
         this.addButton(btnChecked, (b, mb) -> {
             globalHideChecked = !globalHideChecked;
-            btnChecked.setDisplayString(globalHideChecked ? "§b✔ §aON" : "§b✔ §cOFF");
+            btnChecked.setDisplayString(globalHideChecked ? "§b✔ §a" + com.example.util.BmlLang.tr("bml.list.on") : "§b✔ §c" + com.example.util.BmlLang.tr("bml.list.off"));
             if (this.getListWidget() != null) this.getListWidget().refreshEntries();
         });
 
@@ -284,7 +284,7 @@ public class GuiBetterMaterialList
                 this.btnFocusMaster.setDisplayString(focusModeLabel());
             });
 
-            this.btnPlayers = new ButtonGeneric(fbx + 88, row2Y, 72, 20, "§ePlayers §7▾");
+            this.btnPlayers = new ButtonGeneric(fbx + 88, row2Y, 72, 20, "§e" + com.example.util.BmlLang.tr("bml.list.players") + " §7▾");
             this.addButton(this.btnPlayers, (b, mb) -> showPlayerDropdown = !showPlayerDropdown);
         }
     }
@@ -307,7 +307,7 @@ public class GuiBetterMaterialList
         com.example.data.ContainerDataManager.clearAll();
         if (Minecraft.getInstance().player != null) {
             Minecraft.getInstance().player.sendSystemMessage(
-                    Component.literal("§a[BML] Cache cleared. Use ⟳ to recount."));
+                    Component.literal("§a" + com.example.util.BmlLang.tr("bml.chest.cache_cleared")));
         }
     }
 
@@ -327,7 +327,7 @@ public class GuiBetterMaterialList
         } catch (Exception e) {
             if (Minecraft.getInstance().player != null)
                 Minecraft.getInstance().player.sendSystemMessage(
-                        Component.literal("§c[BML] Could not open schematics folder."));
+                        Component.literal("§c" + com.example.util.BmlLang.tr("bml.chest.folder_error")));
         }
     }
 
@@ -350,8 +350,8 @@ public class GuiBetterMaterialList
         }
         if (Minecraft.getInstance().player != null) {
             String msg = copied > 0
-                    ? "§a[BML] Copied " + copied + " schematic(s) to schematics folder."
-                    : "§c[BML] No .litematic files in dropped items.";
+                    ? "§a" + com.example.util.BmlLang.tr("bml.chest.copied", copied)
+                    : "§c" + com.example.util.BmlLang.tr("bml.chest.no_litematic");
             Minecraft.getInstance().player.sendSystemMessage(Component.literal(msg));
         }
     }
@@ -444,9 +444,9 @@ public class GuiBetterMaterialList
 
     private String focusModeLabel() {
         return switch (com.example.party.FocusManager.getFocusMode()) {
-            case com.example.party.FocusManager.MODE_MINE -> "   §aFocus: Mine";
-            case com.example.party.FocusManager.MODE_ALL  -> "   §eFocus: All";
-            default -> "   §7Focus: Off";
+            case com.example.party.FocusManager.MODE_MINE -> "   §a" + com.example.util.BmlLang.tr("bml.list.focus_mine");
+            case com.example.party.FocusManager.MODE_ALL  -> "   §e" + com.example.util.BmlLang.tr("bml.list.focus_all");
+            default -> "   §7" + com.example.util.BmlLang.tr("bml.list.focus_off");
         };
     }
 
@@ -523,28 +523,28 @@ public class GuiBetterMaterialList
 
             String arr = sortDescending ? "▼" : "▲";
             guiContext.drawString(font,
-                "Block" + (currentSortMode == SortMode.BLOCK ? " " + arr : ""),
+                com.example.util.BmlLang.tr("bml.col.block") + (currentSortMode == SortMode.BLOCK ? " " + arr : ""),
                 x + BmlLayoutConstants.NAME_OFFSET_X, headerY,
                 currentSortMode == SortMode.BLOCK ? 0xFFFFAA00 : 0xFFCCCCCC, false);
             guiContext.drawString(font,
-                "Need" + (currentSortMode == SortMode.REQUIRED ? " " + arr : ""),
+                com.example.util.BmlLang.tr("bml.col.need") + (currentSortMode == SortMode.REQUIRED ? " " + arr : ""),
                 toS + 2, headerY, currentSortMode == SortMode.REQUIRED ? 0xFFFFAA00 : 0xFFAAAAAA, false);
             guiContext.drawString(font,
-                "Done" + (currentSortMode == SortMode.PLACED ? " " + arr : ""),
+                com.example.util.BmlLang.tr("bml.col.done") + (currentSortMode == SortMode.PLACED ? " " + arr : ""),
                 plS + 2, headerY, currentSortMode == SortMode.PLACED ? 0xFFFFAA00 : 0xFFFFFFFF, false);
             guiContext.drawString(font,
-                "Have" + (currentSortMode == SortMode.STORED ? " " + arr : ""),
+                com.example.util.BmlLang.tr("bml.col.have") + (currentSortMode == SortMode.STORED ? " " + arr : ""),
                 avS + 2, headerY, currentSortMode == SortMode.STORED ? 0xFFFFAA00 : 0xFFFFFFFF, false);
             guiContext.drawString(font,
-                "Miss" + (currentSortMode == SortMode.MISSING ? " " + arr : ""),
+                com.example.util.BmlLang.tr("bml.col.miss") + (currentSortMode == SortMode.MISSING ? " " + arr : ""),
                 misS + 2, headerY, currentSortMode == SortMode.MISSING ? 0xFFFFAA00 : 0xFFFF7777, false);
         }
 
         if (this.materialList == null || this.materialList.isEmpty()) {
-            String msg = "No Litematica schematic selected";
+            String msg = com.example.util.BmlLang.tr("bml.list.no_schematic");
             guiContext.drawString(font, msg,
                 startX + (effectiveW - font.width(msg)) / 2, headerY + 50, 0xFFFF5555, false);
-            String hint = "§7Drop .litematic files here to add them to your schematics folder";
+            String hint = "§7" + com.example.util.BmlLang.tr("bml.list.drop_hint");
             String hintPlain = "Drop .litematic files here to add them to your schematics folder";
             guiContext.drawString(font, hint,
                 startX + (effectiveW - font.width(hintPlain)) / 2, headerY + 66, 0xFFAAAAAA, false);
@@ -589,8 +589,8 @@ public class GuiBetterMaterialList
                 int dpy = btnPlayers.getY() - dph - 2;
                 guiContext.fill(dpx - 1, dpy - 1, dpx + dpw + 1, dpy + dph + 1, 0xFF000000);
                 guiContext.fill(dpx,     dpy,     dpx + dpw,     dpy + dph,     0xE8222222);
-                // Nagłówek: wyjaśnia, że klik filtruje listę do itemów gracza.
-                guiContext.drawString(font, "§7Klik = pokaż tylko itemy", dpx + 4, dpy + 4, 0xFFFFFFFF, false);
+                // Header: explains that clicking filters the list to a player's items.
+                guiContext.drawString(font, "§7" + com.example.util.BmlLang.tr("bml.list.filter_hint"), dpx + 4, dpy + 4, 0xFFFFFFFF, false);
                 int rowsTop = dpy + 4 + headerH;
                 for (int i = 0; i < members.size(); i++) {
                     String nick = members.get(i);
@@ -676,8 +676,8 @@ public class GuiBetterMaterialList
         if (isMouseDown && !this.wasLeftMouseDown) handleHeaderClick(this.lastMouseX, this.lastMouseY);
         this.wasLeftMouseDown = isMouseDown;
 
-        // Right-click on any item to toggle focus/target. Działa też solo (target jest
-        // lokalny); sync do party wysyłamy tylko gdy faktycznie jesteśmy w party.
+        // Right-click on any item to toggle focus/target. Works solo too (the target is
+        // local); party sync is only sent when actually in a party.
         boolean isRightDown = org.lwjgl.glfw.GLFW.glfwGetMouseButton(window,
                 org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_2) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
         if (isRightDown && !this.wasRightMouseDown && this.hoveredEntry != null) {
@@ -687,7 +687,7 @@ public class GuiBetterMaterialList
             if (com.example.party.PartyManager.isInParty()) {
                 com.example.network.BmlClientNetworking.sendTargetUpdate();
             }
-            // Odśwież HUD natychmiast po zmianie zaznaczenia.
+            // Refresh the HUD immediately after a target change.
             com.example.data.HudOverlayManager.recompute();
         }
         this.wasRightMouseDown = isRightDown;
@@ -790,9 +790,9 @@ public class GuiBetterMaterialList
     public String getPlacementName()  { return this.placementName; }
 
     /**
-     * Stabilny klucz dla zaznaczeń (checkboxów). Liczony z aktualnie WŁĄCZONYCH
-     * placementów (posortowanych), więc jest niezależny od kolejności i od tego, jak
-     * wygląda etykieta tytułowa {@link #placementName}. Patrz {@link com.example.util.BmlPlacementKeys}.
+     * Stable key for checkboxes. Computed from the currently ENABLED placements
+     * (sorted), so it is independent of order and of how the title label
+     * {@link #placementName} looks. See {@link com.example.util.BmlPlacementKeys}.
      */
     public String getChecklistKey() {
         return com.example.util.BmlPlacementKeys.checklistKey(this.placements);

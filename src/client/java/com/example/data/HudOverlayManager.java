@@ -17,19 +17,19 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Dane dla HUD-a w prawym górnym rogu: itemy, które LOKALNY gracz oznaczył jako swój
- * "target" (PPM na liście / focus) i których wciąż brakuje. Lista max 8 pozycji; item
- * znika gdy braki spadną do zera.
+ * Data for the top-right HUD: items the LOCAL player flagged as their "target"
+ * (right-click on the list / focus) and which are still missing. Up to 8 rows; an item
+ * drops off once its shortfall reaches zero.
  *
- * Snapshot jest przeliczany okresowo (z ticka klienta), nie co klatkę — render tylko
- * czyta gotowe wiersze.
+ * The snapshot is recomputed periodically (on a client tick), not every frame — render
+ * only reads the precomputed rows.
  */
 @Environment(EnvType.CLIENT)
 public final class HudOverlayManager {
 
     public static final int MAX_ROWS = 8;
 
-    /** Jeden wiersz HUD: ikona + ile mam / ile potrzeba. */
+    /** One HUD row: icon + have / need. */
     public record Row(ItemStack stack, int have, int need) {}
 
     private static volatile boolean enabled = false;
@@ -39,7 +39,7 @@ public final class HudOverlayManager {
 
     public static boolean isEnabled() { return enabled; }
 
-    /** Przełącza HUD; przy włączeniu od razu przelicza, żeby pojawił się bez opóźnienia. */
+    /** Toggles the HUD; recomputes immediately on enable so it appears without delay. */
     public static boolean toggle() {
         enabled = !enabled;
         if (enabled) recompute();
@@ -47,7 +47,7 @@ public final class HudOverlayManager {
         return enabled;
     }
 
-    /** Ustawia stan HUD bez efektów ubocznych zapisu (używane przy wczytywaniu stanu). */
+    /** Sets the HUD state without save side effects (used when loading persisted state). */
     public static void setEnabled(boolean value) {
         enabled = value;
         if (enabled) recompute();
@@ -62,9 +62,9 @@ public final class HudOverlayManager {
     public static List<Row> getRows() { return rows; }
 
     /**
-     * Przelicza wiersze: bierze aktualną listę materiałów, dolicza zawartość śledzonych
-     * skrzyń i ekwipunek, filtruje do itemów targetowanych przez lokalnego gracza, którym
-     * wciąż brakuje, sortuje malejąco wg braków i obcina do MAX_ROWS.
+     * Recomputes the rows: takes the current material list, adds tracked-chest contents
+     * and inventory, filters to the local player's targeted items that are still missing,
+     * sorts by descending shortfall, and caps at MAX_ROWS.
      */
     public static void recompute() {
         if (!enabled) return;
@@ -94,7 +94,7 @@ public final class HudOverlayManager {
 
             int have = e.getCountAvailable();
             int need = Math.max(0, e.getCountMissing() - have);
-            if (need <= 0) continue; // uzupełnione — znika z HUD
+            if (need <= 0) continue; // fulfilled — drops off the HUD
 
             out.add(new Row(e.getStack().copy(), have, need));
         }

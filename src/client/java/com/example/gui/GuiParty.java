@@ -21,9 +21,9 @@ import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.gui.components.PlayerFaceExtractor;
 
 /**
- * GUI zarządzania party. Layout jest jednokolumnowy, podzielony na sekcje (Twoje party /
- * Zaproszenia / Zaproś gracza / Gracze online). Pozycje przycisków (initGui) i napisów/
- * główek (extractRenderState) są liczone z tych samych stałych, więc się nie rozjeżdżają.
+ * Party management GUI. Single-column layout split into sections (Your party /
+ * Invites / Invite player / Online players). Button positions (initGui) and labels/
+ * heads (extractRenderState) derive from the same constants so they stay aligned.
  */
 @Environment(EnvType.CLIENT)
 public class GuiParty extends GuiBase {
@@ -35,7 +35,7 @@ public class GuiParty extends GuiBase {
     // Geometria panelu.
     private static final int PANEL_W = 300;
     private static final int TOP = 44;
-    private static final int ROW = 22;       // wysokość wiersza członka/gracza
+    private static final int ROW = 22;       // member/player row height
     private static final int SECTION_GAP = 12;
     private static final int ONLINE_PER_PAGE = 8;
 
@@ -78,36 +78,36 @@ public class GuiParty extends GuiBase {
         super.initGui();
         int left = panelLeft();
 
-        // Strzałka wstecz — lewy górny róg.
-        this.addButton(new ButtonGeneric(6, 6, 40, 20, "§e← Wróć"),
+        // Back arrow — top-left corner.
+        this.addButton(new ButtonGeneric(6, 6, 40, 20, "§e" + com.example.util.BmlLang.tr("bml.gui.back")),
                 (b, mb) -> InputHandler.openMaterialList());
 
         if (!BmlClientNetworking.serverSupported) return;
 
         int y = TOP;
 
-        // ── Oczekujące zaproszenia ──
+        // ── Pending invites ──
         List<PartyManager.PendingInvite> invites = PartyManager.getPendingInvites();
         if (!invites.isEmpty()) {
-            y += 16; // miejsce na nagłówek sekcji
+            y += 16; // room for the section header
             for (PartyManager.PendingInvite inv : invites) {
                 this.addButton(new ButtonGeneric(left + PANEL_W - 150, y, 70, 20, "§aAkceptuj"),
                         (b, mb) -> { PartyManager.acceptInvite(inv.partyId()); reopen(); });
-                this.addButton(new ButtonGeneric(left + PANEL_W - 76, y, 76, 20, "§cOdrzuć"),
+                this.addButton(new ButtonGeneric(left + PANEL_W - 76, y, 76, 20, "§c" + com.example.util.BmlLang.tr("bml.party.decline")),
                         (b, mb) -> { PartyManager.declineInvite(inv.partyId()); reopen(); });
                 y += ROW;
             }
             y += SECTION_GAP;
         }
 
-        // ── Twoje party (członkowie) ──
+        // ── Your party (members) ──
         if (PartyManager.isInParty()) {
-            y += 16; // nagłówek "Party gracza X"
+            y += 16; // "X's Party" header
             List<String> members = PartyManager.getMembers();
             String self = selfNick();
             for (String member : members) {
                 if (!member.equals(self)) {
-                    // Sync (każdy może poprosić); Kick tylko admin.
+                    // Sync (anyone can request); Kick admin-only.
                     this.addButton(new ButtonGeneric(left + PANEL_W - 120, y, 56, 18, "§bSync"),
                             (b, mb) -> PlacementSyncHelper.requestPlacementsFromPlayer(member));
                     if (PartyManager.isAdmin()) {
@@ -120,20 +120,20 @@ public class GuiParty extends GuiBase {
             y += SECTION_GAP;
 
             // Leave / Close.
-            String leaveText = PartyManager.isAdmin() ? "§cZamknij Party" : "§cOpuść Party";
+            String leaveText = PartyManager.isAdmin() ? "§c" + com.example.util.BmlLang.tr("bml.party.close") : "§c" + com.example.util.BmlLang.tr("bml.party.leave");
             this.addButton(new ButtonGeneric(left, y, PANEL_W, 20, leaveText),
                     (b, mb) -> { PartyManager.leaveParty(); reopen(); });
             y += 20 + SECTION_GAP;
         } else {
-            // Brak party — odpowiada nagłówkowi "Nie jesteś w żadnym Party" w renderze.
+            // No party — matches the "You are not in a party" header in the render.
             y += 16 + SECTION_GAP;
         }
 
-        // ── Zaproś gracza ──
-        y += 16; // nagłówek "Zaproś gracza"
+        // ── Invite player ──
+        y += 16; // "Invite player" header
         this.inviteField = new EditBox(this.font, left, y, PANEL_W - 90, 20, Component.literal("Nick"));
         this.addRenderableWidget(this.inviteField);
-        this.addButton(new ButtonGeneric(left + PANEL_W - 84, y, 84, 20, "§aZaproś"), (b, mb) -> {
+        this.addButton(new ButtonGeneric(left + PANEL_W - 84, y, 84, 20, "§a" + com.example.util.BmlLang.tr("bml.party.invite")), (b, mb) -> {
             if (this.inviteField != null && !this.inviteField.getValue().isBlank()) {
                 PartyManager.sendInvite(this.inviteField.getValue());
                 this.inviteField.setValue("");
@@ -142,8 +142,8 @@ public class GuiParty extends GuiBase {
         });
         y += 20 + SECTION_GAP;
 
-        // ── Gracze online (z paginacją) ──
-        y += 16; // nagłówek "Gracze online (n)"
+        // ── Online players (paginated) ──
+        y += 16; // "Online players (n)" header
         List<PlayerInfo> online = onlineInvitable();
         int maxPages = Math.max(1, (int) Math.ceil(online.size() / (double) ONLINE_PER_PAGE));
         if (onlinePlayersPage >= maxPages) onlinePlayersPage = maxPages - 1;
@@ -152,7 +152,7 @@ public class GuiParty extends GuiBase {
         int to = Math.min(from + ONLINE_PER_PAGE, online.size());
         for (int i = from; i < to; i++) {
             String pName = online.get(i).getProfile().name();
-            this.addButton(new ButtonGeneric(left + PANEL_W - 70, y, 70, 18, "§aZaproś"),
+            this.addButton(new ButtonGeneric(left + PANEL_W - 70, y, 70, 18, "§a" + com.example.util.BmlLang.tr("bml.party.invite")),
                     (b, mb) -> { PartyManager.sendInvite(pName); reopen(); });
             y += ROW;
         }
@@ -172,7 +172,7 @@ public class GuiParty extends GuiBase {
         Minecraft.getInstance().setScreen(new GuiParty(this.placementName));
     }
 
-    // ── Render (napisy, ramki, główki) ─────────────────────────────────────────
+    // ── Render (text, frames, heads) ────────────────────────────────────────────
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor drawContext, int mouseX, int mouseY, float partialTicks) {
@@ -181,8 +181,8 @@ public class GuiParty extends GuiBase {
         int left = panelLeft();
 
         if (!BmlClientNetworking.serverSupported) {
-            ctx.drawString(this.font, "§cSerwer nie obsługuje BML Party/Sync.", left, TOP + 10, 0xFFFFFFFF, false);
-            ctx.drawString(this.font, "§7Poproś administratora o mod/plugin BetterMaterialList.", left, TOP + 25, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, "§c" + com.example.util.BmlLang.tr("bml.party.no_server"), left, TOP + 10, 0xFFFFFFFF, false);
+            ctx.drawString(this.font, "§7" + com.example.util.BmlLang.tr("bml.party.no_server_hint"), left, TOP + 25, 0xFFFFFFFF, false);
             return;
         }
 
@@ -191,7 +191,7 @@ public class GuiParty extends GuiBase {
         // ── Zaproszenia ──
         List<PartyManager.PendingInvite> invites = PartyManager.getPendingInvites();
         if (!invites.isEmpty()) {
-            sectionHeader(ctx, left, y, "§e✉ Oczekujące zaproszenia");
+            sectionHeader(ctx, left, y, "§e" + com.example.util.BmlLang.tr("bml.party.pending_invites"));
             y += 16;
             for (PartyManager.PendingInvite inv : invites) {
                 rowBg(ctx, left, y);
@@ -211,7 +211,7 @@ public class GuiParty extends GuiBase {
             int idx = 0;
             for (String member : PartyManager.getMembers()) {
                 rowBg(ctx, left, y);
-                // główka gracza (jeśli online)
+                // player head (if online)
                 PlayerInfo info = Minecraft.getInstance().getConnection() != null
                         ? Minecraft.getInstance().getConnection().getPlayerInfo(member) : null;
                 if (info != null)
@@ -230,14 +230,14 @@ public class GuiParty extends GuiBase {
             // miejsce na przycisk Leave (rysowany w initGui)
             y += 20 + SECTION_GAP;
         } else {
-            sectionHeader(ctx, left, y, "§7Nie jesteś w żadnym Party");
+            sectionHeader(ctx, left, y, "§7" + com.example.util.BmlLang.tr("bml.party.not_in_party"));
             y += 16 + SECTION_GAP;
         }
 
-        // ── Zaproś gracza ──
-        sectionHeader(ctx, left, y, "§a➕ Zaproś gracza");
+        // ── Invite player ──
+        sectionHeader(ctx, left, y, "§a" + com.example.util.BmlLang.tr("bml.party.invite_player"));
         y += 16;
-        // pole inviteField rysuje się samo (addRenderableWidget); zostawiamy miejsce
+        // the inviteField renders itself (addRenderableWidget); leave room for it
         y += 20 + SECTION_GAP;
 
         // ── Gracze online ──
@@ -272,7 +272,7 @@ public class GuiParty extends GuiBase {
 
     @Override
     protected void drawTitle(GuiContext ctx, int mouseX, int mouseY, float partialTicks) {
-        // Tytuł wyśrodkowany u góry — nie nachodzi na przycisk "Wróć" w rogu.
+        // Centered title at the top — doesn't overlap the corner "Back" button.
         String t = this.getTitleString();
         int x = (this.getScreenWidth() - this.getStringWidth(t)) / 2;
         this.drawString(ctx, t, x, 8, -1);
@@ -284,7 +284,7 @@ public class GuiParty extends GuiBase {
             this.inviteField.setFocused(false);
             return false;
         }
-        // ESC wraca do listy materiałów.
+        // ESC returns to the material list.
         InputHandler.openMaterialList();
         return false;
     }

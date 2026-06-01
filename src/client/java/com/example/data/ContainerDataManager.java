@@ -20,53 +20,53 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Przechowuje zawartość oznaczonych ("śledzonych") skrzyń, aby doliczać ją do kolumny
- * "stored" na liście materiałów.
+ * Stores the contents of marked ("tracked") chests so they can be added to the "stored"
+ * column on the material list.
  *
- * MODEL DANYCH (po przebudowie):
+ * Data model (after the rework):
  *   Map<containerId, Map<itemName, count>>
  *
- *   Skrzynia jest identyfikowana WYŁĄCZNIE przez swoje fizyczne położenie
- *   (wymiar + pozycja, patrz {@code AbstractContainerScreenMixin#getContainerId}).
- *   Dane NIE są już kluczowane po placemencie.
+ *   A chest is identified ONLY by its physical location (dimension + position, see
+ *   {@code AbstractContainerScreenMixin#getContainerId}). Data is no longer keyed by
+ *   placement.
  *
- * DLACZEGO:
- *   Wcześniej skrzynie były zagnieżdżone pod "sklejoną nazwą aktywnych placementów"
- *   (np. "A, B (+2 more)"). Ta nazwa zależała od kolejności i liczby placementów i była
- *   liczona w dwóch rozjeżdżających się miejscach (zapis w mixinie vs odczyt w GUI),
- *   przez co przy każdym otwarciu listy "stored" potrafiło pokazać co innego — nawet
- *   solo i bez otwierania skrzyni. Skrzynia ma jedno, fizyczne położenie wspólne dla
- *   wszystkich w party, więc klucz globalny per serwer jest naturalny i stabilny.
+ * Why:
+ *   Chests used to be nested under a "joined active-placement label" (e.g. "A, B (+2
+ *   more)"). That label depended on placement order and count and was computed in two
+ *   diverging places (mixin write vs GUI read), so "stored" could show something
+ *   different on every list opening — even solo and without opening a chest. A chest has
+ *   one physical location shared by everyone in a party, so a global per-server key is
+ *   natural and stable.
  *
- * Plik: {@code config/bettermateriallist_data/<serverId>_containers_v2.json}.
- * Stary format jest jednorazowo migrowany przy starcie (spłaszczany), a oryginał
- * zachowywany jako {@code .bak}.
+ * File: {@code config/bettermateriallist_data/<serverId>_containers_v2.json}.
+ * The old format is migrated once on startup (flattened) and the original is kept as
+ * {@code .bak}.
  */
 @Environment(EnvType.CLIENT)
 public class ContainerDataManager {
     private static final Logger LOGGER = LoggerFactory.getLogger("BML-Containers");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    /** Stała wstawiana w pole "placement" pakietów sync — skrzynie są globalne. */
+    /** Constant placed in the "placement" field of sync packets — chests are global. */
     public static final String GLOBAL_PLACEMENT = "__global__";
 
-    // Ostatnio kliknięty blok — ustawiany przez MultiPlayerGameModeMixin, używany do
-    // wyznaczenia containerId otwartej skrzyni.
+    // Last clicked block — set by MultiPlayerGameModeMixin, used to derive the
+    // containerId of the opened chest.
     public static net.minecraft.core.BlockPos lastInteractedBlockPos = null;
 
     // Map<containerId, Map<itemName, count>>
     private static Map<String, Map<String, Integer>> containers = new HashMap<>();
 
-    // Debounce zapisu: mutacje ustawiają dirty=true, a faktyczny zapis na dysk robi
-    // flush() wołany okresowo z ClientTickEvents oraz na disconnect. Dzięki temu seria
-    // kliknięć/skanów nie wywołuje serii synchronicznych zapisów na wątku głównym.
+    // Write debounce: mutations set dirty=true; the actual disk write happens in flush(),
+    // called periodically from ClientTickEvents and on disconnect. This keeps a burst of
+    // clicks/scans from triggering a burst of synchronous writes on the main thread.
     private static volatile boolean dirty = false;
 
     private static void markDirty() {
         dirty = true;
     }
 
-    /** Zapisuje na dysk tylko jeśli były zmiany od ostatniego flush. */
+    /** Writes to disk only if there were changes since the last flush. */
     public static void flush() {
         if (dirty) {
             dirty = false;
@@ -109,14 +109,14 @@ public class ContainerDataManager {
             return;
         }
 
-        // Brak nowego pliku — spróbuj zmigrować stary (zagnieżdżony per-placement) format.
+        // No new file — try to migrate the old (per-placement nested) format.
         migrateLegacy();
     }
 
     /**
-     * Spłaszcza stary format {@code placement -> containerId -> items} do
-     * {@code containerId -> items}, sumując zawartość gdyby ta sama skrzynia występowała
-     * pod wieloma placementami.
+     * Flattens the old {@code placement -> containerId -> items} format to
+     * {@code containerId -> items}, summing contents if the same chest appeared under
+     * multiple placements.
      */
     private static void migrateLegacy() {
         File legacy = getLegacyFile();
@@ -142,7 +142,7 @@ public class ContainerDataManager {
         } catch (Exception e) {
             LOGGER.error("[BML] Legacy container migration failed: {}", e.getMessage());
         } finally {
-            // Niezależnie od wyniku — odsuń stary plik, by nie migrować go w kółko.
+            // Regardless of outcome — move the old file aside so we don't re-migrate it.
             backup(legacy);
         }
     }
@@ -194,7 +194,7 @@ public class ContainerDataManager {
         markDirty();
     }
 
-    /** Aktualizuje zawartość skrzyni (po lokalnym skanie) — tylko jeśli jest oznaczona. */
+    /** Updates a chest's contents (after a local scan) — only if it is marked. */
     public static void updateContainerItems(String containerId, Map<String, Integer> items) {
         if (containerId == null) return;
         if (isContainerMarked(containerId)) {
@@ -207,9 +207,10 @@ public class ContainerDataManager {
     }
 
     /**
-     * Aktualizuje zawartość skrzyni z danych odebranych od członka party (bez ponownego
-     * wysyłania). Nie nadpisujemy istniejących danych PUSTĄ wersją — zapobiega to utracie
-     * "stored", gdy ktoś prześle pełny stan zanim sam zeskanował daną skrzynię.
+     * Updates a chest's contents from data received from a party member (without
+     * re-sending). We do not overwrite existing data with an EMPTY version — this
+     * prevents losing "stored" when someone pushes full state before they have scanned
+     * that chest themselves.
      */
     public static void updateContainerItemsSilent(String containerId, Map<String, Integer> items) {
         if (containerId == null) return;
@@ -221,7 +222,7 @@ public class ContainerDataManager {
         markDirty();
     }
 
-    /** Suma zawartości WSZYSTKICH oznaczonych skrzyń na serwerze. */
+    /** Sum of the contents of ALL marked chests on the server. */
     public static Map<String, Integer> getTotalItems() {
         Map<String, Integer> totals = new HashMap<>();
         for (Map<String, Integer> contents : containers.values()) {
@@ -244,14 +245,14 @@ public class ContainerDataManager {
         return new java.util.HashSet<>(containers.keySet());
     }
 
-    /** Zawartość pojedynczej oznaczonej skrzyni (lub pusta mapa). */
+    /** Contents of a single marked chest (or an empty map). */
     public static Map<String, Integer> getContainerContents(String containerId) {
         if (containerId == null) return new HashMap<>();
         Map<String, Integer> c = containers.get(containerId);
         return c == null ? new HashMap<>() : new HashMap<>(c);
     }
 
-    /** Pełna migawka skrzyń: { containerId -> { item -> count } }. Do SYNC_FULL_STATE. */
+    /** Full chest snapshot: { containerId -> { item -> count } }. For SYNC_FULL_STATE. */
     public static Map<String, Map<String, Integer>> snapshot() {
         Map<String, Map<String, Integer>> copy = new HashMap<>();
         containers.forEach((id, items) -> copy.put(id, new HashMap<>(items)));

@@ -7,19 +7,19 @@ import net.minecraft.client.Minecraft;
 import java.util.Locale;
 
 /**
- * Jedno źródło prawdy dla identyfikatora serwera używanego jako prefiks plików danych.
+ * Single source of truth for the server id used as the data-file prefix.
  *
- * Wcześniej ta logika była zduplikowana w {@code ContainerDataManager} i
- * {@code MaterialStateManager}, co groziło rozjechaniem się kluczy. Tutaj jest
- * dodatkowo utwardzona: IP normalizujemy do małych liter, dzięki czemu połączenie
- * przez listę serwerów i przez "direct connect" na ten sam adres trafia w ten sam plik.
+ * This logic used to be duplicated in {@code ContainerDataManager} and
+ * {@code MaterialStateManager}, which risked the keys diverging. Here it is also
+ * hardened: the IP is lowercased so that connecting via the server list and via
+ * "direct connect" to the same address resolves to the same file.
  */
 @Environment(EnvType.CLIENT)
 public final class BmlServerId {
 
     private BmlServerId() {}
 
-    /** Zwraca stabilny identyfikator bieżącego serwera (lub "singleplayer"). */
+    /** Returns a stable id for the current server (or "singleplayer"). */
     public static String current() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.getCurrentServer() != null && mc.getCurrentServer().ip != null) {

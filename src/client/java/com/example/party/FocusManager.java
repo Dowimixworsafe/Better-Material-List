@@ -23,9 +23,9 @@ import java.util.*;
  * Tracks which party members are "targeting" (focusing on) which items.
  * Right-click on a material list entry toggles your own target; state syncs via PARTY_TARGET_UPDATE.
  *
- * Persystencja: zestaw MOICH targetów + flaga HUD są zapisywane per serwer w
- * {@code <serverId>_focus.json}. Targety innych graczy NIE są zapisywane (przychodzą
- * przez sync). Load następuje na JOIN, save na każdej lokalnej zmianie i na disconnect.
+ * Persistence: the set of MY targets + the HUD flag are saved per server in
+ * {@code <serverId>_focus.json}. Other players' targets are NOT saved (they arrive
+ * via sync). Load happens on JOIN, save on every local change.
  */
 @Environment(EnvType.CLIENT)
 public class FocusManager {
@@ -81,7 +81,7 @@ public class FocusManager {
         if (!hiddenPlayers.remove(nick)) hiddenPlayers.add(nick);
     }
 
-    /** Włącza/wyłącza danego gracza jako filtr listy materiałów. */
+    /** Enables/disables a player as a material-list filter. */
     public static void togglePlayerFilter(String nick) {
         if (!filterPlayers.remove(nick)) filterPlayers.add(nick);
     }
@@ -91,8 +91,8 @@ public class FocusManager {
     public static boolean isListFilterActive() { return !filterPlayers.isEmpty(); }
 
     /**
-     * Czy dany item ma być pokazany przy aktywnym filtrze graczy. Zwraca true gdy filtr
-     * nieaktywny, albo gdy któryś z wybranych graczy targetuje ten item.
+     * Whether an item should show under the active player filter. Returns true when the
+     * filter is inactive, or when one of the selected players targets this item.
      */
     public static boolean passesPlayerFilter(String itemId) {
         if (filterPlayers.isEmpty()) return true;
@@ -125,7 +125,7 @@ public class FocusManager {
         return isLocalPlayerTargetingRaw(itemId);
     }
 
-    /** Czy lokalny gracz targetuje item — BEZ zależności od trybu focus (dla borderu). */
+    /** Whether the local player targets the item — independent of focus mode (for the border). */
     public static boolean isLocalPlayerTargetingRaw(String itemId) {
         String self = selfNick();
         if (self == null) return false;
@@ -200,7 +200,7 @@ public class FocusManager {
         return new File(dir, BmlServerId.current() + "_focus.json");
     }
 
-    /** Zapisuje MOJE targety + flagę HUD. Wołane przy każdej lokalnej zmianie i na disconnect. */
+    /** Saves MY targets + the HUD flag. Called on every local change. */
     public static void save() {
         try (FileWriter w = new FileWriter(getSaveFile())) {
             JsonObject root = new JsonObject();
@@ -214,7 +214,7 @@ public class FocusManager {
         }
     }
 
-    /** Wczytuje moje targety + flagę HUD. Wołane na JOIN (po ustaleniu nicku gracza). */
+    /** Loads my targets + the HUD flag. Called on JOIN (once the player name is known). */
     public static void load() {
         File f = getSaveFile();
         if (!f.exists()) return;

@@ -25,7 +25,7 @@ public class GuiBmlChests extends GuiBase {
 
     public GuiBmlChests(String placementName) {
         this.placementName = placementName;
-        this.title = "Lista Skrzyń BML";
+        this.title = com.example.util.BmlLang.tr("bml.chests.title", 0);
         refreshList();
     }
 
@@ -38,10 +38,10 @@ public class GuiBmlChests extends GuiBase {
             this.coordsList.addAll(containers);
             this.coordsList.sort(String::compareTo);
         }
-        this.title = "Śledzone skrzynie (" + this.coordsList.size() + ")";
+        this.title = com.example.util.BmlLang.tr("bml.chests.title", this.coordsList.size());
     }
 
-    /** Łączna liczba przedmiotów zapamiętanych w danej skrzyni. */
+    /** Total number of items remembered for a given chest. */
     private static int itemCount(String containerId) {
         int sum = 0;
         for (int v : ContainerDataManager.getContainerContents(containerId).values()) sum += v;
@@ -53,14 +53,15 @@ public class GuiBmlChests extends GuiBase {
         super.initGui();
         int left = panelLeft();
 
-        // Strzałka wstecz — lewy górny róg, spójnie z innymi ekranami.
-        this.addButton(new ButtonGeneric(6, 6, 40, 20, "§e← Wróć"),
+        // Back arrow — top-left corner, consistent with other screens.
+        this.addButton(new ButtonGeneric(6, 6, 40, 20, "§e" + com.example.util.BmlLang.tr("bml.gui.back")),
                 (btn, mb) -> InputHandler.openMaterialList());
 
-        // Globalny przełącznik podświetleń (wszystkie skrzynie naraz).
+        // Global highlight toggle (all chests at once).
         boolean anyHl = !ChestHighlightManager.all().isEmpty();
         this.addButton(new ButtonGeneric(left + PANEL_W - 150, 36, 150, 20,
-                anyHl ? "§a💡 Zgaś wszystkie" : "§7💡 Podświetl wszystkie"), (btn, mb) -> {
+                anyHl ? "§a" + com.example.util.BmlLang.tr("bml.chests.highlight_all_off")
+                      : "§7" + com.example.util.BmlLang.tr("bml.chests.highlight_all_on")), (btn, mb) -> {
             ChestHighlightManager.toggleAll();
             this.initGui();
         });
@@ -70,11 +71,11 @@ public class GuiBmlChests extends GuiBase {
         for (String rawCoord : this.coordsList) {
             int colActions = left + PANEL_W - 3 * (btnSize + 4);
 
-            // 🔍 podgląd
+            // 🔍 preview
             this.addButton(new ButtonGeneric(colActions, startY, btnSize, btnSize, "🔍"),
                     (btn, mb) -> GuiBase.openGui(new GuiChestPreview(rawCoord, this.placementName)));
 
-            // 💡 podświetlenie (toggle)
+            // 💡 highlight (toggle)
             boolean hl = ChestHighlightManager.isHighlighted(rawCoord);
             this.addButton(new ButtonGeneric(colActions + (btnSize + 4), startY, btnSize, btnSize,
                     hl ? "§a💡" : "§7💡"), (btn, mb) -> {
@@ -82,7 +83,7 @@ public class GuiBmlChests extends GuiBase {
                 this.initGui();
             });
 
-            // ✖ usuń ze śledzenia
+            // ✖ remove from tracking
             this.addButton(new ButtonGeneric(colActions + 2 * (btnSize + 4), startY, btnSize, btnSize, "§c✖"),
                     (btn, mb) -> {
                 ContainerDataManager.setContainerMarked(rawCoord, false);
@@ -94,9 +95,9 @@ public class GuiBmlChests extends GuiBase {
             startY += ROW_H;
         }
 
-        // Dolny pasek: odznacz wszystkie.
+        // Bottom bar: unmark all.
         this.addButton(new ButtonGeneric(left, this.height - 30, PANEL_W, 20,
-                "§cOdznacz wszystkie skrzynie"), (btn, mb) -> {
+                "§c" + com.example.util.BmlLang.tr("bml.chests.unmark_all")), (btn, mb) -> {
             for (String rawCoord : new ArrayList<>(ContainerDataManager.getMarkedContainers())) {
                 ContainerDataManager.setContainerMarked(rawCoord, false);
             }
@@ -105,7 +106,7 @@ public class GuiBmlChests extends GuiBase {
             this.initGui();
             if (this.minecraft != null && this.minecraft.player != null) {
                 this.minecraft.player.sendSystemMessage(
-                    Component.literal("§a[BML] Wszystkie skrzynie zostały odznaczone."));
+                    Component.literal("§a" + com.example.util.BmlLang.tr("bml.chests.all_unmarked")));
             }
         });
     }
@@ -117,18 +118,18 @@ public class GuiBmlChests extends GuiBase {
 
         int left = panelLeft();
 
-        // (tytuł rysuje wyśrodkowany drawTitle)
+        // (the centered drawTitle renders the title)
 
-        // Nagłówki kolumn.
+        // Column headers.
         int headerY = LIST_TOP - 12;
-        ctx.drawString(this.font, "§7Koordynaty", left + 4, headerY, 0xFFFFFFFF, false);
-        ctx.drawString(this.font, "§7Itemy",      left + 200, headerY, 0xFFFFFFFF, false);
-        ctx.drawString(this.font, "§7Akcje",      left + PANEL_W - 3 * 22 - 2, headerY, 0xFFFFFFFF, false);
+        ctx.drawString(this.font, "§7" + com.example.util.BmlLang.tr("bml.chests.col_coords"), left + 4, headerY, 0xFFFFFFFF, false);
+        ctx.drawString(this.font, "§7" + com.example.util.BmlLang.tr("bml.chests.col_items"), left + 200, headerY, 0xFFFFFFFF, false);
+        ctx.drawString(this.font, "§7" + com.example.util.BmlLang.tr("bml.chests.col_actions"), left + PANEL_W - 3 * 22 - 2, headerY, 0xFFFFFFFF, false);
         ctx.drawString(this.font, "§8─────────────────────────────────────",
                 left, headerY + 9, 0xFFFFFFFF, false);
 
         if (this.coordsList.isEmpty()) {
-            ctx.drawString(this.font, "§7Brak śledzonych skrzyń. Oznacz skrzynię przyciskiem przy jej otwarciu.",
+            ctx.drawString(this.font, "§7" + com.example.util.BmlLang.tr("bml.chests.empty"),
                     left, LIST_TOP + 4, 0xFFFFFFFF, false);
             return;
         }
@@ -136,7 +137,7 @@ public class GuiBmlChests extends GuiBase {
         int y = LIST_TOP;
         int idx = 0;
         for (String coord : this.coordsList) {
-            // Tło co drugi wiersz dla czytelności.
+            // Alternating row background for readability.
             if ((idx & 1) == 0)
                 ctx.fill(left, y - 2, left + PANEL_W, y + ROW_H - 4, 0x18FFFFFF);
 
@@ -159,7 +160,7 @@ public class GuiBmlChests extends GuiBase {
 
     @Override
     protected void drawTitle(GuiContext ctx, int mouseX, int mouseY, float partialTicks) {
-        // Tytuł wyśrodkowany u góry — nie nachodzi na przycisk "Wróć" w rogu.
+        // Centered title at the top — doesn't overlap the corner "Back" button.
         String t = this.getTitleString();
         int x = (this.getScreenWidth() - this.getStringWidth(t)) / 2;
         this.drawString(ctx, t, x, 8, -1);
@@ -167,7 +168,7 @@ public class GuiBmlChests extends GuiBase {
 
     @Override
     public boolean shouldCloseOnEsc() {
-        // ESC wraca do listy materiałów zamiast zamykać do świata.
+        // ESC returns to the material list instead of closing to the world.
         InputHandler.openMaterialList();
         return false;
     }

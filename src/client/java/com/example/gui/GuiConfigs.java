@@ -20,17 +20,17 @@ public class GuiConfigs extends GuiConfigsBase {
     public void initGui() {
         super.initGui();
         this.clearOptions();
-        // Malilib sam zajmie się wygenerowaniem listy opcji na podstawie metody
+        // Malilib generates the option list itself based on getConfigs().
         // getConfigs()
 
-        // Strzałka wstecz w lewym górnym rogu — wraca do listy materiałów.
-        this.addButton(new ButtonGeneric(6, 6, 40, 20, "§e← Wróć"),
+        // Back arrow in the top-left corner — returns to the material list.
+        this.addButton(new ButtonGeneric(6, 6, 40, 20, "§e" + com.example.util.BmlLang.tr("bml.gui.back")),
                 (btn, mb) -> InputHandler.openMaterialList());
     }
 
     @Override
     protected void drawTitle(fi.dy.masa.malilib.render.GuiContext ctx, int mouseX, int mouseY, float partialTicks) {
-        // Tytuł wyśrodkowany u góry, żeby nie nachodził na przycisk "Wróć" w rogu.
+        // Centered title at the top so it doesn't overlap the corner "Back" button.
         String t = this.getTitleString();
         int x = (this.getScreenWidth() - this.getStringWidth(t)) / 2;
         this.drawString(ctx, t, x, 8, -1);
@@ -49,7 +49,7 @@ public class GuiConfigs extends GuiConfigsBase {
     @Override
     public void removed() {
         super.removed();
-        // Gdy zamykamy okno, od razu zapisujemy nową konfigurację na dysk
+        // On close, immediately save the new config to disk.
         ModConfig config = new ModConfig();
         config.save();
     }

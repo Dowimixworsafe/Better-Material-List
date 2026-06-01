@@ -19,10 +19,10 @@ import net.fabricmc.loader.api.FabricLoader;
 import com.google.gson.JsonParser;
 
 /**
- * Zarządza stanem party po stronie klienta.
- * Przechowuje: UUID bieżącego party, listę memberów, oczekujące zaproszenia.
- * Wysyła pakiety przez BmlClientNetworking (żeby uniknąć cyklicznych zależności,
- * ta klasa buduje JsonObject i wywołuje BmlClientNetworking.sendRaw).
+ * Manages party state on the client side.
+ * Holds: current party UUID, member list, pending invites.
+ * Sends packets via BmlClientNetworking (to avoid cyclic dependencies,
+ * this class builds the JsonObject and calls BmlClientNetworking.sendRaw).
  */
 @Environment(EnvType.CLIENT)
 public class PartyManager {
@@ -33,7 +33,7 @@ public class PartyManager {
     private static String adminNick = null;
     private static final List<String> members = new ArrayList<>();
 
-    /** Oczekujące zaproszenia (maks. kilka, gracz może je odrzucić/przyjąć). */
+    /** Pending invites (a few at most; the player can accept/decline them). */
     public record PendingInvite(String fromNick, UUID partyId) {}
     private static final List<PendingInvite> pendingInvites = new ArrayList<>();
 
@@ -41,12 +41,12 @@ public class PartyManager {
     private static final List<String> recentPlayers = new ArrayList<>();
     private static boolean recentPlayersLoaded = false;
 
-    // ─── Wysyłanie ────────────────────────────────────────────────────────────
+    // ─── Sending ──────────────────────────────────────────────────────────────
 
-    /** Wysyła zaproszenie do gracza o podanym nicku. Tworzy nowe party jeśli nie jesteśmy w żadnym. */
+    /** Sends an invite to the named player. Creates a new party if we're not in one. */
     public static void sendInvite(String targetNick) {
         if (targetNick == null || targetNick.isBlank()) return;
-        // Jeśli nie jesteśmy jeszcze w party, tworzymy je (my jesteśmy liderem)
+        // If we're not in a party yet, create one (we become the leader).
         if (currentPartyId == null) {
             currentPartyId = UUID.randomUUID();
             members.clear();
@@ -63,9 +63,9 @@ public class PartyManager {
         LOGGER.info("[BML-Party] Sent invite to {}", targetNick);
     }
 
-    /** Akceptuje zaproszenie i dołącza do party. */
+    /** Accepts an invite and joins the party. */
     public static void acceptInvite(UUID partyId) {
-        // Usuń z listy oczekujących
+        // Remove from the pending list.
         pendingInvites.removeIf(inv -> inv.partyId().equals(partyId));
 
         currentPartyId = partyId;
@@ -78,13 +78,13 @@ public class PartyManager {
         LOGGER.info("[BML-Party] Accepted invite to party {}", partyId);
     }
 
-    /** Odrzuca zaproszenie (nie wysyła pakietu — serwer po prostu się nie dowie, timeout po jego stronie). */
+    /** Declines an invite (sends no packet — the server just times it out). */
     public static void declineInvite(UUID partyId) {
         pendingInvites.removeIf(inv -> inv.partyId().equals(partyId));
         LOGGER.info("[BML-Party] Declined invite to party {}", partyId);
     }
 
-    /** Opuszcza bieżące party. */
+    /** Leaves the current party. */
     public static void leaveParty() {
         if (currentPartyId == null) return;
         JsonObject payload = new JsonObject();
@@ -95,7 +95,7 @@ public class PartyManager {
         reset();
     }
 
-    /** Wyrzuca gracza z party (wymaga uprawnień admina - serwer to zweryfikuje). */
+    /** Kicks a player from the party (requires admin rights — verified by the server). */
     public static void kickPlayer(String targetNick) {
         if (currentPartyId == null || !isAdmin()) return;
         JsonObject payload = new JsonObject();
@@ -106,11 +106,11 @@ public class PartyManager {
         LOGGER.info("[BML-Party] Sent kick request for {}", targetNick);
     }
 
-    // ─── Odbieranie ───────────────────────────────────────────────────────────
+    // ─── Receiving ────────────────────────────────────────────────────────────
 
     /**
-     * Główny dispatcher dla pakietów party przychodzących z serwera.
-     * Wywoływany przez BmlClientNetworking na game thread.
+     * Main dispatcher for party packets coming from the server.
+     * Called by BmlClientNetworking on the game thread.
      */
     public static void handle(JsonObject json) {
         String type = json.get("type").getAsString();
@@ -143,12 +143,11 @@ public class PartyManager {
         pendingInvites.add(new PendingInvite(fromNick, partyId));
         LOGGER.info("[BML-Party] Received invite from {} (party {})", fromNick, partyId);
 
-        // Pokaż graczowi powiadomienie w stylu action bar (nie chat!)
+        // Notify the player.
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
             mc.player.sendSystemMessage(
-                Component.literal("§a[BML] §e" + fromNick + " §azaprasza Cię do party! " +
-                    "§7(Otwórz GUI BML → Party lub naciśnij O, aby zaakceptować)"));
+                Component.literal("§a" + com.example.util.BmlLang.tr("bml.party.invite_received", fromNick)));
         }
         refreshGui();
     }
@@ -190,7 +189,7 @@ public class PartyManager {
         refreshGui();
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            mc.player.sendSystemMessage(Component.literal("§c[BML] Zostałeś rozłączony z Party."));
+            mc.player.sendSystemMessage(Component.literal("§c" + com.example.util.BmlLang.tr("bml.party.disbanded")));
         }
     }
 
@@ -202,7 +201,7 @@ public class PartyManager {
         }
     }
 
-    // ─── Stan ─────────────────────────────────────────────────────────────────
+    // ─── State ────────────────────────────────────────────────────────────────
 
     public static boolean isInParty() {
         return currentPartyId != null;
@@ -234,7 +233,7 @@ public class PartyManager {
         return Collections.unmodifiableList(pendingInvites);
     }
 
-    /** Resetuje cały stan party (np. przy rozłączeniu z serwera). */
+    /** Resets all party state (e.g. on disconnect). */
     public static void reset() {
         currentPartyId = null;
         adminNick = null;
@@ -247,7 +246,7 @@ public class PartyManager {
         if (nick == null || nick.isBlank() || nick.equals(getSelfNick())) return;
         if (!recentPlayersLoaded) loadRecentPlayers();
         recentPlayers.remove(nick);
-        recentPlayers.add(0, nick); // Dodaj na sam szczyt
+        recentPlayers.add(0, nick); // Add to the very top.
         if (recentPlayers.size() > MAX_RECENT_PLAYERS) {
             recentPlayers.remove(recentPlayers.size() - 1);
         }
@@ -299,7 +298,7 @@ public class PartyManager {
         return (mc.player != null) ? mc.player.getGameProfile().name() : null;
     }
 
-    /** Wewnętrzna metoda sendRaw – deleguje do BmlClientNetworking aby uniknąć importu cyklicznego. */
+    /** Internal sendRaw — delegates to BmlClientNetworking to avoid a cyclic import. */
     private static void sendRaw(JsonObject payload) {
         com.example.network.BmlClientNetworking.sendRaw(payload);
     }

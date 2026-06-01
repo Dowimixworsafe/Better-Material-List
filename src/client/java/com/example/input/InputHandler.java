@@ -43,7 +43,7 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
     }
 
     public void registerKeyCallbacks() {
-        // Rejestrujemy nasłuchiwanie na wszystkie nasze klawisze
+        // Register listeners for all our keybinds.
         ModConfig.OPEN_GUI.getKeybind().setCallback(this);
         ModConfig.RELOAD_LIST.getKeybind().setCallback(this);
         ModConfig.OPEN_CONFIG.getKeybind().setCallback(this);
@@ -76,34 +76,35 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
             boolean on = com.example.data.ChestHighlightManager.toggleAll();
             if (Minecraft.getInstance().player != null) {
                 Minecraft.getInstance().player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        on ? "§a[BML] Podświetlono śledzone skrzynie." : "§7[BML] Wyłączono podświetlenie skrzyń."));
+                        on ? "§a" + com.example.util.BmlLang.tr("bml.highlight.on")
+                           : "§7" + com.example.util.BmlLang.tr("bml.highlight.off")));
             }
             return true;
         }
 
         if (key == ModConfig.TOGGLE_HUD.getKeybind()) {
             boolean on = com.example.data.HudOverlayManager.toggle();
-            com.example.party.FocusManager.save(); // zapamiętaj flagę HUD po relogu
+            com.example.party.FocusManager.save(); // persist the HUD flag across relogs
             if (Minecraft.getInstance().player != null) {
                 Minecraft.getInstance().player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        on ? "§a[BML] HUD zaznaczonych itemów: WŁ. §7(zaznacz itemy PPM na liście)"
-                           : "§7[BML] HUD zaznaczonych itemów: WYŁ."));
+                        on ? "§a" + com.example.util.BmlLang.tr("bml.hud.on")
+                           : "§7" + com.example.util.BmlLang.tr("bml.hud.off")));
             }
             return true;
         }
 
-        // --- 2. Przeładowanie (Reload) TYLKO wewnątrz otwartego GUI ---
+        // --- 2. Reload ONLY while the GUI is open ---
         if (key == ModConfig.RELOAD_LIST.getKeybind()) {
-            // Jeśli okno BML NIE jest otwarte, ignorujemy całkowicie ten klawisz.
-            // Dzięki temu odświeżanie nie działa w tle podczas zwykłej gry.
+            // If the BML screen is NOT open, ignore this key entirely.
+            // This keeps reload from firing in the background during normal play.
             if (!(Minecraft.getInstance().screen instanceof GuiBetterMaterialList)) {
                 return false;
             }
 
             GuiBetterMaterialList currentGui = (GuiBetterMaterialList) Minecraft.getInstance().screen;
 
-            // Jeśli gracz kliknął pasek wyszukiwania i np. chce wpisać "dirt",
-            // przepuszczamy literę "r" do paska i NIE odświeżamy listy.
+            // If the player clicked the search bar and wants to type e.g. "dirt",
+            // pass the "r" through to the bar and do NOT reload the list.
             if (currentGui.isSearchFocused()) {
                 return false;
             }
@@ -122,19 +123,19 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
             return true;
         }
 
-        // --- 3. Otwieranie Głównego GUI (To co miałeś) ---
+        // --- 3. Open the main GUI ---
         if (key == ModConfig.OPEN_GUI.getKeybind()) {
             openMaterialList();
             return true;
         }
 
-        // Jeśli wciśnięty klawisz nie należy do nas
+        // Key isn't ours.
         return false;
     }
 
     /**
-     * Otwiera główne GUI listy materiałów (świeże dane lub cache). Publiczne, bo używane
-     * też przez przyciski "wstecz" w podekranach (Config / Chests / Party).
+     * Opens the main material-list GUI (fresh data or cache). Public because it's also
+     * used by the "back" buttons in sub-screens (Config / Chests / Party).
      */
     public static void openMaterialList() {
         SchematicPlacementManager manager = DataManager.getSchematicPlacementManager();

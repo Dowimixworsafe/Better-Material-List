@@ -9,29 +9,28 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Stabilny klucz dla zaznaczeń (checkboxów) listy materiałów.
+ * Stable key for material-list checkboxes.
  *
- * PROBLEM, który to rozwiązuje:
- *   Dawniej klucz danych był "sklejaną etykietą" aktywnych placementów, np.
- *   "A, B, C (+2 more)". Etykieta zależała od KOLEJNOŚCI iteracji i od LICZBY
- *   placementów, a liczona była w dwóch miejscach (zapis vs odczyt), które się
- *   rozjeżdżały. Skutek: ten sam zestaw schematów dawał różne klucze przy różnych
- *   otwarciach → dane "znikały".
+ * Problem this solves:
+ *   The data key used to be a "joined label" of active placements, e.g.
+ *   "A, B, C (+2 more)". That label depended on iteration ORDER and on the placement
+ *   COUNT, and was computed in two places (write vs read) that diverged. Result: the
+ *   same set of schematics produced different keys across openings → data "vanished".
  *
- * ROZWIĄZANIE:
- *   Klucz = posortowane (deterministycznie) nazwy WŁĄCZONYCH placementów. Niezależny
- *   od kolejności i bez obcinania "(+N more)". Dla pojedynczego placementu klucz to po
- *   prostu jego nazwa, więc dotychczasowe zapisy działają dalej bez migracji.
+ * Solution:
+ *   Key = deterministically sorted names of ENABLED placements. Independent of order
+ *   and without the "(+N more)" truncation. For a single placement the key is just its
+ *   name, so existing saves keep working without migration.
  */
 @Environment(EnvType.CLIENT)
 public final class BmlPlacementKeys {
 
-    /** Klucz używany, gdy nie ma żadnego aktywnego placementu. */
+    /** Key used when there is no active placement. */
     public static final String GLOBAL = "global";
 
     private BmlPlacementKeys() {}
 
-    /** Deterministyczny klucz checklisty dla zestawu włączonych placementów. */
+    /** Deterministic checklist key for the set of enabled placements. */
     public static String checklistKey(List<SchematicPlacement> placements) {
         if (placements == null || placements.isEmpty()) return GLOBAL;
 

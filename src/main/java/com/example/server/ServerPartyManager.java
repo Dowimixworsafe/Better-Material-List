@@ -7,17 +7,17 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Zarządza stanem party na serwerze BML w pamięci RAM.
- * Struktura: UUID party -> zbiór UUID graczy online w danym party.
- * Przechowuje też admina (twórcę) każdego party.
+ * Manages BML party state on the server, in memory.
+ * Structure: party UUID -> set of online player UUIDs in that party.
+ * Also stores the admin (creator) of each party.
  */
 public class ServerPartyManager {
     private static final Map<UUID, Set<UUID>> parties = new ConcurrentHashMap<>();
     private static final Map<UUID, UUID> partyLeaders = new ConcurrentHashMap<>();
 
     /**
-     * Tworzy nowe party z podanym adminem (twórcą).
-     * Admin jest automatycznie dodawany jako pierwszy członek.
+     * Creates a new party with the given admin (creator).
+     * The admin is automatically added as the first member.
      */
     public static void createParty(UUID partyId, UUID adminUUID) {
         Set<UUID> members = ConcurrentHashMap.newKeySet();
@@ -59,18 +59,18 @@ public class ServerPartyManager {
         return parties.containsKey(partyId);
     }
 
-    /** Rozwiązuje party całkowicie. */
+    /** Disbands the party entirely. */
     public static void disbandParty(UUID partyId) {
         parties.remove(partyId);
         partyLeaders.remove(partyId);
     }
 
-    /** Sprawdza czy dany gracz już należy do jakiegokolwiek party na tym serwerze. */
+    /** Whether the given player already belongs to any party on this server. */
     public static boolean isPlayerInAnyParty(UUID playerUUID) {
         return getPartyIdForPlayer(playerUUID) != null;
     }
 
-    /** Zwraca partyId, w którym znajduje się gracz, lub null jeśli nie jest w żadnym. */
+    /** Returns the partyId the player is in, or null if none. */
     public static UUID getPartyIdForPlayer(UUID playerUUID) {
         for (Map.Entry<UUID, Set<UUID>> entry : parties.entrySet()) {
             if (entry.getValue().contains(playerUUID)) {

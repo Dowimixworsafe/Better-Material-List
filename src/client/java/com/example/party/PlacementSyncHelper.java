@@ -18,19 +18,19 @@ import java.io.File;
 import java.util.List;
 
 /**
- * Obsługuje synchronizację pozycji/orientacji schematów Litematiki w ramach party.
+ * Handles syncing Litematica schematic placement/orientation within a party.
  *
  * CO JEST SYNCHRONIZOWANE:
  *   - Nazwa pliku .litematic i nazwa placement
- *   - Współrzędne origin (X, Y, Z)
+ *   - Origin coordinates (X, Y, Z)
  *   - Rotation i Mirror (jako stringi enum)
  *
  * CO NIE JEST SYNCHRONIZOWANE:
- *   - Sam plik .litematic (zbyt duży, musi być przekazany ręcznie)
+ *   - The .litematic file itself (too large, must be shared manually)
  *
- * Przy odbiorze: jeśli odbiorca ma plik lokalnie → pokazujemy instrukcję jak go wczytać.
- * Automatyczne tworzenie placement przez API jest niestabilne między wersjami Litematiki,
- * więc ograniczamy się do powiadomienia z gotowymi do skopiowania danymi.
+ * On receipt: if the receiver has the file locally, we show instructions to load it.
+ * Auto-creating a placement via the API is unstable across Litematica versions,
+ * so we limit ourselves to a notification with ready-to-copy data.
  */
 @Environment(EnvType.CLIENT)
 public class PlacementSyncHelper {
@@ -38,8 +38,8 @@ public class PlacementSyncHelper {
     private static final Logger LOGGER = LoggerFactory.getLogger("BML-PlacementSync");
 
     /**
-     * Wysyła dane o WSZYSTKICH aktywnych schematach do party.
-     * Wywoływane z Party GUI po kliknięciu "Sync Schematics".
+     * Sends data about ALL active schematics to the party.
+     * Called from the Party GUI after clicking "Sync Schematics".
      */
     public static void sendAllPlacements() {
         if (!PartyManager.isInParty()) return;
@@ -60,11 +60,11 @@ public class PlacementSyncHelper {
         }
         LOGGER.info("[BML-PlacementSync] Sent {} placements to party.", sent);
 
-        // Powiadom własny chat
+        // Notify our own chat.
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
             mc.player.sendSystemMessage(
-                Component.literal("§a[BML] §2Wysłano " + sent + " placement(ów) do party."));
+                Component.literal("§a" + com.example.util.BmlLang.tr("bml.sync.sent_placements", sent)));
         }
     }
 
@@ -131,18 +131,18 @@ public class PlacementSyncHelper {
             // Odsylamy BEZPOSREDNIO do tego gracza
             sendSinglePlacement(placement, requestingNick);
         }
-        // Dorzucamy pełny stan (stored + zaznaczenia), żeby dołączający gracz nie musiał
-        // skanować skrzyń od zera.
+        // Also push full state (stored + checks) so the joining player doesn't have to
+        // scan chests from scratch.
         BmlClientNetworking.sendFullStateTo(requestingNick);
         LOGGER.info("[BML-PlacementSync] Responded to placement request from {}", requestingNick);
     }
 
     /**
      * Stosuje odebrany pakiet SYNC_PLACEMENT.
-     * Wywoływane przez BmlClientNetworking na game thread.
+     * Called by BmlClientNetworking on the game thread.
      *
-     * Zamiast automatycznie tworzyć placement przez API (niestabilne między wersjami Litematiki),
-     * wyświetlamy graczowi czytelną instrukcję z gotowymi danymi.
+     * Instead of auto-creating a placement via the API (unstable across Litematica versions),
+     * we show the player clear instructions with ready-to-use data.
      */
     public static void applyPlacement(JsonObject json) {
         String schematicName  = json.get("schematicName").getAsString();
@@ -159,17 +159,17 @@ public class PlacementSyncHelper {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
 
-        // Sprawdź czy gracz posiada plik schematu lokalnie
+        // Check whether the player has the schematic file locally.
         java.io.File file = findSchematicFile(schematicName);
 
         if (file == null) {
-            // Plik nie istnieje — poproś o ręczne skopiowanie
+            // File missing — ask the user to copy it manually.
             mc.player.sendSystemMessage(
-                Component.literal("§c[BML] §eBrakuje schematu: §f" + schematicName +
-                    " §7– skopiuj plik .litematic do folderu schematics/, a potem wczytaj go w Litematice."));
+                Component.literal("§c" + com.example.util.BmlLang.tr("bml.sync.missing_schematic", schematicName)));
+
         } else {
             try {
-                // Usuń istniejący placement o tej samej nazwie (aby nie duplikować)
+                // Remove an existing placement with the same name (avoid duplicates).
                 SchematicPlacementManager mgr = DataManager.getSchematicPlacementManager();
                 List<SchematicPlacement> existing = mgr.getAllSchematicsPlacements();
                 for (SchematicPlacement p : existing) {
@@ -188,21 +188,21 @@ public class PlacementSyncHelper {
                     fi.dy.masa.litematica.data.DataManager.getSchematicPlacementManager().addSchematicPlacement(placement, true);
                     
                     mc.player.sendSystemMessage(
-                        Component.literal("§a[BML Party] Automatycznie załadowano i ustawiono schemat od znajomego: §e" + placementName));
+                        Component.literal("§a" + com.example.util.BmlLang.tr("bml.sync.auto_loaded", placementName)));
                 } else {
                      LOGGER.error("Schematic returned null during createFromFile.");
                 }
             } catch (Exception e) {
-                LOGGER.error("[BML-PlacementSync] Błąd auto-placementu: {}", e.getMessage());
+                LOGGER.error("[BML-PlacementSync] Auto-placement error: {}", e.getMessage());
                 mc.player.sendSystemMessage(
-                    Component.literal("§c[BML] Błąd wczytywania automatycznego z pliku: " + schematicName));
+                    Component.literal("§c" + com.example.util.BmlLang.tr("bml.sync.load_error", schematicName)));
             }
         }
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    /** Pobiera nazwę pliku schematu (tylko basename, z rozszerzeniem). */
+    /** Returns the schematic file name (basename with extension only). */
     private static String getSchematicFileName(SchematicPlacement placement) {
         try {
             java.nio.file.Path schematicPath = placement.getSchematicFile();

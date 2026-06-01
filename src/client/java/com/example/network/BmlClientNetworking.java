@@ -20,32 +20,32 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Warstwa sieciowa – strona klienta.
+ * Networking layer — client side.
  *
  * GRACEFUL DEGRADATION:
- *   serverSupported = false → mod działa normalnie (singleplayer / serwer bez BML)
- *   serverSupported = true  → party + sync aktywne
+ *   serverSupported = false → the mod works normally (singleplayer / server without BML)
+ *   serverSupported = true  → party + sync active
  *
- * Używa nowego Fabric Networking API (MC 1.21+) z CustomPacketPayload.
+ * Uses the new Fabric Networking API (MC 1.21+) with CustomPacketPayload.
  */
 @Environment(EnvType.CLIENT)
 public class BmlClientNetworking {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("BML-Network");
 
-    /** True gdy serwer odpowiedział na BML_HELLO. */
+    /** True once the server replied to BML_HELLO. */
     public static volatile boolean serverSupported = false;
 
-    // ─── Rejestracja receivera ────────────────────────────────────────────────
+    // ─── Receiver registration ─────────────────────────────────────────────────
 
-    /** Rejestruje receiver dla pakietów BML. Wywoływane raz w onInitializeClient(). */
+    /** Registers the receiver for BML packets. Called once in onInitializeClient(). */
     public static void registerReceiver() {
         ClientPlayNetworking.registerGlobalReceiver(
             BmlPackets.BmlPayload.TYPE,
             (payload, context) -> {
-                // Odczyt danych
+                // Read the data.
                 byte[] bytes = payload.data();
-                // NA GAME THREAD — nigdy na netty!
+                // ON THE GAME THREAD — never on netty!
                 context.client().execute(() -> {
                     try {
                         JsonObject json = JsonParser.parseString(
@@ -61,16 +61,16 @@ public class BmlClientNetworking {
         LOGGER.info("[BML-Network] Registered BML payload receiver.");
     }
 
-    // ─── Dispatcher (przychodzące) ─────────────────────────────────────────────
+    // ─── Dispatcher (incoming) ──────────────────────────────────────────────────
 
-    /** Ostrzegamy tylko raz na sesję, gdy ktoś w party ma niezgodną wersję protokołu. */
+    /** Warn only once per session if a party member has an incompatible protocol version. */
     private static boolean versionMismatchWarned = false;
 
     private static void handleIncoming(JsonObject json) {
         String type = json.get("type").getAsString();
         LOGGER.debug("[BML-Network] Received: {}", type);
 
-        // Wykrycie niezgodnej wersji moda u innego członka party (pakiety niosą "v").
+        // Detect an incompatible mod version on another party member (packets carry "v").
         if (json.has("v") && !BmlPackets.PROTOCOL_VERSION.equals(json.get("v").getAsString())
                 && !versionMismatchWarned) {
             versionMismatchWarned = true;
@@ -79,7 +79,7 @@ public class BmlClientNetworking {
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
             if (mc.player != null) {
                 mc.player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                        "§e[BML] Ktoś w party ma inną wersję moda — synchronizacja może być niepełna. Zaktualizujcie do tej samej wersji."));
+                        "§e" + com.example.util.BmlLang.tr("bml.net.version_mismatch")));
             }
         }
 
@@ -89,7 +89,7 @@ public class BmlClientNetworking {
                 LOGGER.info("[BML-Network] Server supports BML! Party features enabled.");
             }
             case BmlPackets.SYNC_CHECKED -> {
-                // "placement" niesie wprost checklistKey (nazwy włączonych placementów).
+                // "placement" carries the checklistKey directly (enabled-placement names).
                 String placement = json.get("placement").getAsString();
                 String itemName  = json.get("itemName").getAsString();
                 boolean checked  = json.get("checked").getAsBoolean();
@@ -97,7 +97,7 @@ public class BmlClientNetworking {
                 MaterialStateManager.setCheckedSilentVersioned(placement, itemName, checked, ts);
             }
             case BmlPackets.SYNC_CONTAINER -> {
-                // Skrzynie są globalne (klucz = containerId); pole "placement" jest ignorowane.
+                // Chests are global (key = containerId); the "placement" field is ignored.
                 String containerId = json.get("containerId").getAsString();
                 java.util.HashMap<String, Integer> items = new java.util.HashMap<>();
                 json.getAsJsonObject("items").entrySet()
@@ -123,7 +123,7 @@ public class BmlClientNetworking {
     }
 
     private static void applyFullState(JsonObject json) {
-        // checkedItems: { checklistKey -> { itemName -> bool } }  (klucz jest nieprzezroczysty)
+        // checkedItems: { checklistKey -> { itemName -> bool } }  (key is opaque)
         if (json.has("checkedItems")) {
             json.getAsJsonObject("checkedItems").entrySet().forEach(keyEntry -> {
                 String checklistKey = keyEntry.getKey();
@@ -132,7 +132,7 @@ public class BmlClientNetworking {
                         checklistKey, itemEntry.getKey(), itemEntry.getValue().getAsBoolean()));
             });
         }
-        // containers (model globalny): { containerId -> { itemName -> count } }
+        // containers (global model): { containerId -> { itemName -> count } }
         if (json.has("containers")) {
             json.getAsJsonObject("containers").entrySet().forEach(containerEntry -> {
                 java.util.HashMap<String, Integer> items = new java.util.HashMap<>();
@@ -143,17 +143,17 @@ public class BmlClientNetworking {
         }
     }
 
-    // ─── Wysyłanie ────────────────────────────────────────────────────────────
+    // ─── Sending ──────────────────────────────────────────────────────────────
 
     /**
-     * Niskopoziomowe wysyłanie JSON do serwera.
-     * Pomija wysyłanie jeśli serverSupported == false.
+     * Low-level JSON send to the server.
+     * Skips sending if serverSupported == false.
      */
     public static void sendRaw(JsonObject payload) {
         if (!serverSupported) return;
         try {
-            // Stempel wersji protokołu na każdym pakiecie — pozwala odbiorcy wykryć
-            // niezgodną wersję moda u innego członka party.
+            // Stamp the protocol version on every packet — lets the receiver detect
+            // an incompatible mod version on another party member.
             if (!payload.has("v")) {
                 payload.addProperty("v", BmlPackets.PROTOCOL_VERSION);
             }
@@ -164,7 +164,7 @@ public class BmlClientNetworking {
         }
     }
 
-    /** Handshake – sprawdza czy serwer ma BML. Przy BML_HELLO nie sprawdzamy serverSupported. */
+    /** Handshake — checks whether the server has BML. We don't check serverSupported for BML_HELLO. */
     public static void sendHello() {
         try {
             JsonObject payload = new JsonObject();
@@ -178,12 +178,12 @@ public class BmlClientNetworking {
         }
     }
 
-    // ─── Pomocnicze metody budujące payloady ──────────────────────────────────
+    // ─── Payload-building helpers ───────────────────────────────────────────────
 
     /**
-     * Sync checkboxa – wywoływany z MaterialStateManager.setChecked().
-     * Pole "placement" niesie wprost checklistKey (nazwy włączonych placementów).
-     * Pole "ts" pozwala odbiorcy rozstrzygnąć kolejność (last-write-wins).
+     * Checkbox sync — called from MaterialStateManager.setChecked().
+     * The "placement" field carries the checklistKey directly (enabled-placement names).
+     * The "ts" field lets the receiver resolve ordering (last-write-wins).
      */
     public static void sendCheckedSync(String placement, String itemName, boolean checked) {
         if (!PartyManager.isInParty()) return;
@@ -197,7 +197,7 @@ public class BmlClientNetworking {
         sendRaw(payload);
     }
 
-    /** Sync skrzynki – wywoływany z ContainerDataManager.updateContainerItems(). */
+    /** Chest sync — called from ContainerDataManager.updateContainerItems(). */
     public static void sendContainerSync(String placement, String containerId, Map<String, Integer> items) {
         if (!PartyManager.isInParty()) return;
         JsonObject payload = new JsonObject();
@@ -211,7 +211,7 @@ public class BmlClientNetworking {
         sendRaw(payload);
     }
 
-    /** Broadcasts local player's current target set to all party members. */
+    /** Broadcasts the local player's current target set to all party members. */
     public static void sendTargetUpdate() {
         if (!PartyManager.isInParty()) return;
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
@@ -228,13 +228,13 @@ public class BmlClientNetworking {
     }
 
     /**
-     * Wysyła pełny stan (zaznaczenia + zawartość oznaczonych skrzyń) do konkretnego gracza.
-     * Wywoływane gdy ktoś dołącza do party i prosi o synchronizację — dzięki temu nie musi
-     * skanować wszystkiego od zera.
+     * Sends full state (checks + tracked-chest contents) to a specific player.
+     * Called when someone joins the party and requests a sync — so they don't have to
+     * scan everything from scratch.
      *
-     * Uwaga: pole "targetNick" jest honorowane tylko jeśli serwer/plugin potrafi routować
-     * per-gracz; relay-plugin rozśle to broadcastem do party, co jest bezpieczne, bo odbiór
-     * pełnego stanu jest scalający (merge), a nie nadpisujący.
+     * Note: the "targetNick" field is honored only if the server/plugin can route
+     * per-player; a relay plugin will broadcast it to the party, which is safe because
+     * full-state receipt is merge-only, not overwriting.
      */
     public static void sendFullStateTo(String targetNick) {
         if (!PartyManager.isInParty()) return;

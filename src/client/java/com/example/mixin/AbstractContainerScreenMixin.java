@@ -33,7 +33,7 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
     // Tworzy unikalne ID skrzynki: Wymiar + Koordynaty (np.
     // minecraft:overworld;[10, 64, -20])
     // Tworzy unikalne ID skrzynki: Wymiar + Koordynaty.
-    // Łączy podwójne skrzynie w jedno ID!
+    // Merges double chests into a single ID!
     private String getContainerId() {
         if (ContainerDataManager.lastInteractedBlockPos == null || Minecraft.getInstance().level == null) {
             return null;
@@ -42,26 +42,26 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
         net.minecraft.core.BlockPos pos = ContainerDataManager.lastInteractedBlockPos;
         net.minecraft.world.level.block.state.BlockState state = Minecraft.getInstance().level.getBlockState(pos);
 
-        // Jeśli to jest skrzynia (ChestBlock)
+        // If it is a chest (ChestBlock).
         if (state.getBlock() instanceof net.minecraft.world.level.block.ChestBlock) {
             net.minecraft.world.level.block.state.properties.ChestType chestType = state
                     .getValue(net.minecraft.world.level.block.ChestBlock.TYPE);
 
-            // Jeśli to nie jest pojedyncza skrzynia
+            // If it is not a single chest.
             if (chestType != net.minecraft.world.level.block.state.properties.ChestType.SINGLE) {
                 net.minecraft.core.Direction facing = state.getValue(net.minecraft.world.level.block.ChestBlock.FACING);
                 net.minecraft.core.BlockPos otherHalfPos = pos;
 
-                // Obliczamy pozycję drugiej połówki na podstawie rotacji
+                // Compute the other half's position from the facing.
                 if (chestType == net.minecraft.world.level.block.state.properties.ChestType.RIGHT) {
                     otherHalfPos = pos.relative(facing.getCounterClockWise());
                 } else if (chestType == net.minecraft.world.level.block.state.properties.ChestType.LEFT) {
                     otherHalfPos = pos.relative(facing.getClockWise());
                 }
 
-                // Zawsze wybieramy mniejszy BlockPos (np. mniejszy X, a jak równe to mniejszy
+                // Always pick the smaller BlockPos (smaller X, ties broken by smaller
                 // Z)
-                // aby obie połówki generowały identyczny ID.
+                // so both halves produce an identical ID.
                 if (otherHalfPos.getX() < pos.getX()
                         || (otherHalfPos.getX() == pos.getX() && otherHalfPos.getZ() < pos.getZ())) {
                     pos = otherHalfPos;
@@ -76,7 +76,7 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
     protected void onInit(CallbackInfo ci) {
         AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
 
-        // Unikamy wstrzykiwania do Piecyków, Kowadeł, Stołów Rzemieślniczych itp.
+        // Avoid injecting into furnaces, anvils, crafting tables, etc.
         boolean isValidContainer = screen instanceof net.minecraft.client.gui.screens.inventory.ContainerScreen ||
                 screen instanceof net.minecraft.client.gui.screens.inventory.ShulkerBoxScreen ||
                 screen instanceof net.minecraft.client.gui.screens.inventory.HopperScreen;
@@ -94,7 +94,7 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
         int btnWidth = 20;
         int btnHeight = 20;
         int btnX = guiLeft + 176 - btnWidth;
-        int btnY = guiTop - 50; // Przycisk pojawi się nad ekwipunkiem gracza, po prawej stronie
+        int btnY = guiTop - 50; // Button sits above the player inventory, on the right.
 
         this.bml_TrackingButtonInstance = Button.builder(Component.literal(""), button -> {
             boolean marked = !ContainerDataManager.isContainerMarked(cid);
@@ -124,7 +124,7 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
         if (cid == null)
             return;
 
-        // Zapisujemy tylko jeśli skrzynka jest aktualnie oznaczona do śledzenia
+        // Save only if the chest is currently marked for tracking.
         if (!ContainerDataManager.isContainerMarked(cid)) {
             return;
         }
@@ -132,10 +132,10 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
         Map<String, Integer> contents = new HashMap<>();
         var slots = screen.getMenu().slots;
 
-        // Zabezpieczenie (Math.max), aby uniknąć błędów przy dziwnych, customowych GUI
-        // z innych modów.
-        // Odcinamy ostatnie 36 slotów, ponieważ należą one zawsze do ekwipunku gracza
-        // (nie chcemy ich wliczać do skrzyni).
+        // Guard (Math.max) to avoid errors with weird custom GUIs
+        // from other mods.
+        // Drop the last 36 slots since they always belong to the player inventory
+        // (we don't want to count them as chest contents).
         int containerSlotsEnd = Math.max(0, slots.size() - 36);
 
         for (int i = 0; i < containerSlotsEnd; i++) {
