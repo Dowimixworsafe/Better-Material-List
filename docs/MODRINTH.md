@@ -1,4 +1,4 @@
-# BML — Better Material List
+# Better List for Litematica
 
 **A Litematica add-on that turns the material list into a full build-tracking tool.**
 

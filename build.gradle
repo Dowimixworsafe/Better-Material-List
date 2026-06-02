@@ -29,7 +29,7 @@ loom {
 	splitEnvironmentSourceSets()
 
 	mods {
-		"bettermateriallist" {
+		"betterlist" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}

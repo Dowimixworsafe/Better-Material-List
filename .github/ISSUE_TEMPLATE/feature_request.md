@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for BML — Better Material List
+about: Suggest an idea for Better List for Litematica
 title: "[Feature] "
 labels: enhancement
 assignees: ''

@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem with BML — Better Material List
+about: Report a problem with Better List for Litematica
 title: "[Bug] "
 labels: bug
 assignees: ''

@@ -1,8 +1,8 @@
 {
 	"schemaVersion": 1,
-	"id": "bettermateriallist",
+	"id": "betterlist",
 	"version": "${version}",
-	"name": "BML — Better Material List",
+	"name": "Better List for Litematica",
 	"description": "A Litematica add-on that supercharges the material list: per-item checkboxes, tracked-chest 'stored' counts with in-world highlighting and content preview, a party system that syncs progress between players, a targeted-items HUD, and quick filtering.",
 	"authors": [
 		"Dowimixworsafe"
@@ -13,14 +13,14 @@
 		"issues": "https://github.com/Dowimixworsafe/Better-Material-List/issues"
 	},
 	"license": "ARR",
-	"icon": "assets/bettermateriallist/icon.png",
+	"icon": "assets/betterlist/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"com.example.ExampleMod"
+			"com.betterlist.ExampleMod"
 		],
 		"client": [
-			"com.example.ExampleModClient"
+			"com.betterlist.ExampleModClient"
 		]
 	},
 	"mixins": [

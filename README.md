@@ -1,4 +1,4 @@
-# BML — Better Material List
+# Better List for Litematica
 
 A **Litematica add-on** for Fabric that turns the material list into a full build-tracking tool.
 
@@ -45,7 +45,7 @@ Either way, party members just need the **same mod version** on their clients.
 Requires the Java 25 toolchain.
 
 ```bash
-./gradlew build      # → build/libs/bettermateriallist-<version>.jar
+./gradlew build      # → build/libs/betterlist-<version>.jar
 ./gradlew runClient  # launch a dev client
 ```
 
