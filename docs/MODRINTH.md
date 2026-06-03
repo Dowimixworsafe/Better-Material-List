@@ -67,4 +67,4 @@ Party sync works through a server-side relay (a Paper/Bukkit plugin or the built
 
 Litematica and MaLiLib are separate projects by *masa* and are required as dependencies — they are **not** bundled with this mod. Big thanks to them for the foundation this add-on builds on.
 
-Found a bug or have a suggestion? Open an issue on [GitHub](https://github.com/Dowimixworsafe/Better-Material-List/issues).
+Found a bug or have a suggestion? Open an issue on [GitHub](https://github.com/Dowimixworsafe/Better-List/issues).

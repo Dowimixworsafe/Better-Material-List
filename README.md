@@ -36,7 +36,7 @@ All keybinds are rebindable in the config screen.
 All single-player features work without any server setup. **Party sync** additionally needs the server to relay BML packets. Two options:
 
 - **Fabric server:** drop this same mod into the server's `mods/` folder (with Fabric API). No extra download.
-- **Bukkit-family server** (Paper, Purpur, Spigot, …): install the companion **[BML Integration plugin](https://github.com/Dowimixworsafe/Better-Material-List-Sync-Plugin)**.
+- **Bukkit-family server** (Paper, Purpur, Spigot, …): install the companion **[BetterList Integration plugin](https://github.com/Dowimixworsafe/Better-List-Integration)**.
 
 Either way, party members just need the **same mod version** on their clients.
 
