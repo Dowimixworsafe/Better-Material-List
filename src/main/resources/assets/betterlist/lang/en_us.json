@@ -1,5 +1,6 @@
 {
 	"bml.gui.back": "← Back",
+	"bml.gui.search_placeholder": "Search item...",
 
 	"bml.list.party": "Party",
 	"bml.list.no_server": "No Server",
@@ -22,6 +23,8 @@
 
 	"bml.config.hover_tooltip": "Item hover tooltip",
 	"bml.config.hover_tooltip.comment": "Show the info popup when hovering an item on the material list.",
+	"bml.config.count_inventory": "Count player inventory",
+	"bml.config.count_inventory.comment": "When on, items in your inventory count toward 'stored'. When off, only tracked chests count.",
 
 	"bml.tip.party": "Open the party menu (invite/sync with friends)",
 	"bml.tip.layout": "Switch layout: 2 columns horizontal / vertical / single",
@@ -112,6 +115,19 @@
 	"bml.party.invite_received": "[BetterList] %s invites you to a party! (Open the Better List GUI → Party or press O to accept)",
 	"bml.party.disbanded": "[BetterList] You were disconnected from the party.",
 
+	"bml.party.err.not_online": "[BetterList] Player %s is not online.",
+	"bml.party.err.cant_invite_self": "[BetterList] You can't invite yourself.",
+	"bml.party.err.target_in_party": "[BetterList] Player %s is already in another party.",
+	"bml.party.err.you_in_party": "[BetterList] You already belong to another party.",
+	"bml.party.err.only_leader_invite": "[BetterList] Only the party leader can invite.",
+	"bml.party.err.party_gone": "[BetterList] That party no longer exists.",
+	"bml.party.err.no_invite": "[BetterList] You have no pending invite to that party.",
+	"bml.party.err.leave_first": "[BetterList] Leave your current party first.",
+	"bml.party.err.only_leader_kick": "[BetterList] Only the party leader can kick players.",
+	"bml.party.err.not_in_your_party": "[BetterList] That player is not in your party.",
+	"bml.party.notice.invite_sent": "[BetterList] Invite sent to %s.",
+	"bml.party.notice.kicked": "[BetterList] You were kicked from the party.",
+
 	"bml.highlight.on": "[BetterList] Tracked chests highlighted.",
 	"bml.highlight.off": "[BetterList] Chest highlighting disabled.",
 	"bml.hud.on": "[BetterList] Targeted-items HUD: ON (right-click items on the list)",
@@ -122,5 +138,10 @@
 	"bml.sync.sent_placements": "[BetterList] Sent %s placement(s) to the party.",
 	"bml.sync.missing_schematic": "[BetterList] Missing schematic: %s – copy the .litematic file into the schematics/ folder, then load it in Litematica.",
 	"bml.sync.auto_loaded": "[BetterList] Auto-loaded and placed a schematic from a friend: %s",
-	"bml.sync.load_error": "[BetterList] Error auto-loading from file: %s"
+	"bml.sync.load_error": "[BetterList] Error auto-loading from file: %s",
+	"bml.sync.member_missing": "[BetterList] %s is missing schematic %s — send them the file.",
+	"bml.party.project": "Party project (select schematics)",
+	"bml.party.send_project": "Send selected to party",
+	"bml.party.project_sent": "[BetterList] Sent the project (%s schematic(s)) to the party.",
+	"bml.party.no_schematics": "No schematics loaded to choose from."
 }

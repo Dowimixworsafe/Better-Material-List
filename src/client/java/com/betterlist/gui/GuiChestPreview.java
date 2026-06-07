@@ -78,7 +78,8 @@ public class GuiChestPreview extends GuiBase {
     public void initGui() {
         super.initGui();
         ButtonGeneric btnBack = new ButtonGeneric(6, 6, 60, 20, "§e" + com.betterlist.util.BmlLang.tr("bml.gui.back"));
-        this.addButton(btnBack, (b, mb) -> GuiBase.openGui(new GuiBmlChests(this.returnPlacementName)));
+        this.addButton(btnBack, com.betterlist.util.BmlButtons.leftClick(
+                () -> GuiBase.openGui(new GuiBmlChests(this.returnPlacementName))));
     }
 
     @Override

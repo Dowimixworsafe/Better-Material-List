@@ -70,16 +70,23 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
         return Minecraft.getInstance().level.dimension().identifier().toString() + ";" + pos.toShortString();
     }
 
+    // Only chests / shulker boxes / hoppers are trackable containers. The player's own
+    // inventory, crafting tables, furnaces, anvils, etc. must NEVER be scanned — their slots
+    // would otherwise be written into the last-clicked chest's id and wipe its real contents.
+    @Unique
+    private boolean bml_isTrackableContainer() {
+        Object screen = (Object) this;
+        return screen instanceof net.minecraft.client.gui.screens.inventory.ContainerScreen ||
+                screen instanceof net.minecraft.client.gui.screens.inventory.ShulkerBoxScreen ||
+                screen instanceof net.minecraft.client.gui.screens.inventory.HopperScreen;
+    }
+
     @Inject(method = "init", at = @At("RETURN"))
     protected void onInit(CallbackInfo ci) {
         AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
 
         // Avoid injecting into furnaces, anvils, crafting tables, etc.
-        boolean isValidContainer = screen instanceof net.minecraft.client.gui.screens.inventory.ContainerScreen ||
-                screen instanceof net.minecraft.client.gui.screens.inventory.ShulkerBoxScreen ||
-                screen instanceof net.minecraft.client.gui.screens.inventory.HopperScreen;
-
-        if (!isValidContainer)
+        if (!bml_isTrackableContainer())
             return;
 
         String cid = getContainerId();
@@ -118,6 +125,12 @@ public abstract class AbstractContainerScreenMixin extends net.minecraft.client.
     @Inject(method = "removed", at = @At("HEAD"))
     public void onRemoved(CallbackInfo ci) {
         AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
+
+        // Same guard as onInit: closing the player inventory / a crafting table / furnace
+        // must not scan its slots into the last-clicked chest's id (would zero it out).
+        if (!bml_isTrackableContainer())
+            return;
+
         String cid = getContainerId();
         if (cid == null)
             return;

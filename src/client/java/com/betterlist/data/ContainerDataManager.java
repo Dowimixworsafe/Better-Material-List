@@ -50,6 +50,16 @@ public class ContainerDataManager {
     /** Constant placed in the "placement" field of sync packets — chests are global. */
     public static final String GLOBAL_PLACEMENT = "__global__";
 
+    // A valid containerId is "<dimension>;<BlockPos>" — e.g. "minecraft:overworld;-220, 73, -212"
+    // (or the bracketed "[10, 64, -20]" form). Anything else (e.g. a stale "PLAYER EQ" key
+    // from an old build or a foreign packet) is rejected so it can't pollute the list/totals.
+    private static final java.util.regex.Pattern CONTAINER_ID_PATTERN =
+            java.util.regex.Pattern.compile("^.+;\\[?-?\\d+, ?-?\\d+, ?-?\\d+]?$");
+
+    public static boolean isValidContainerId(String id) {
+        return id != null && CONTAINER_ID_PATTERN.matcher(id).matches();
+    }
+
     // Last clicked block — set by MultiPlayerGameModeMixin, used to derive the
     // containerId of the opened chest.
     public static net.minecraft.core.BlockPos lastInteractedBlockPos = null;
@@ -100,6 +110,7 @@ public class ContainerDataManager {
                 Map<String, Map<String, Integer>> loaded = GSON.fromJson(reader, type);
                 if (loaded != null) {
                     containers = loaded;
+                    pruneInvalidContainers();
                 }
             } catch (Exception e) {
                 LOGGER.error("[BML] Failed to read {} — keeping a backup and starting empty: {}",
@@ -111,6 +122,17 @@ public class ContainerDataManager {
 
         // No new file — try to migrate the old (per-placement nested) format.
         migrateLegacy();
+    }
+
+    /** Drops any container whose id isn't a valid "dimension;pos" (e.g. legacy "PLAYER EQ"). */
+    private static void pruneInvalidContainers() {
+        int before = containers.size();
+        containers.keySet().removeIf(id -> !isValidContainerId(id));
+        int removed = before - containers.size();
+        if (removed > 0) {
+            LOGGER.info("[BML] Dropped {} invalid container key(s) from saved data.", removed);
+            save();
+        }
     }
 
     /**
@@ -184,8 +206,14 @@ public class ContainerDataManager {
         }
     }
 
+    /**
+     * Mark/unmark from a party member (no re-broadcast). The party is a single shared
+     * "brain": a teammate marking/unmarking a chest propagates to everyone, exactly like
+     * builds do. We only reject ids that aren't a valid "dimension;pos" so foreign/legacy
+     * junk (e.g. "PLAYER EQ") can't enter the shared state.
+     */
     public static void setContainerMarkedSilent(String containerId, boolean marked) {
-        if (containerId == null) return;
+        if (!isValidContainerId(containerId)) return;
         if (marked) {
             containers.putIfAbsent(containerId, new HashMap<>());
         } else {
@@ -194,7 +222,15 @@ public class ContainerDataManager {
         markDirty();
     }
 
-    /** Updates a chest's contents (after a local scan) — only if it is marked. */
+    /**
+     * Updates a chest's contents (after a local scan) — only if it is marked.
+     *
+     * This intentionally accepts an empty scan: emptying a real tracked chest must drop its
+     * "stored" count to 0. The data-loss bug where the WRONG screen (player inventory, a
+     * crafting table, …) was scanned into a chest's id is prevented upstream by the
+     * trackable-container guard in {@code AbstractContainerScreenMixin#onRemoved}, so only a
+     * genuine scan of this chest reaches here.
+     */
     public static void updateContainerItems(String containerId, Map<String, Integer> items) {
         if (containerId == null) return;
         if (isContainerMarked(containerId)) {
@@ -213,7 +249,7 @@ public class ContainerDataManager {
      * that chest themselves.
      */
     public static void updateContainerItemsSilent(String containerId, Map<String, Integer> items) {
-        if (containerId == null) return;
+        if (!isValidContainerId(containerId)) return;
         if ((items == null || items.isEmpty()) && isContainerMarked(containerId)
                 && !containers.get(containerId).isEmpty()) {
             return;

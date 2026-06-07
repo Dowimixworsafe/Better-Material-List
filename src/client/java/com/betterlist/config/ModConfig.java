@@ -45,6 +45,7 @@ public class ModConfig implements IConfigHandler {
 
    // General options (stored under "Options" in betterlist.json).
    public static boolean SHOW_ITEM_HOVER_TOOLTIP = true;
+   public static boolean COUNT_PLAYER_INVENTORY = true;
 
    public void load() {
       File configFile = new File(FabricLoader.getInstance().getConfigDir().toFile(), "betterlist.json");
@@ -70,6 +71,9 @@ public class ModConfig implements IConfigHandler {
                if (optionsObj.has("showItemHoverTooltip")) {
                   SHOW_ITEM_HOVER_TOOLTIP = optionsObj.get("showItemHoverTooltip").getAsBoolean();
                }
+               if (optionsObj.has("countPlayerInventory")) {
+                  COUNT_PLAYER_INVENTORY = optionsObj.get("countPlayerInventory").getAsBoolean();
+               }
             }
          }
       }
@@ -92,6 +96,7 @@ public class ModConfig implements IConfigHandler {
 
          JsonObject optionsObj = new JsonObject();
          optionsObj.addProperty("showItemHoverTooltip", SHOW_ITEM_HOVER_TOOLTIP);
+         optionsObj.addProperty("countPlayerInventory", COUNT_PLAYER_INVENTORY);
          root.add("Options", optionsObj);
 
          JsonUtils.writeJsonToFile(root, new File(dir, "betterlist.json").toPath());

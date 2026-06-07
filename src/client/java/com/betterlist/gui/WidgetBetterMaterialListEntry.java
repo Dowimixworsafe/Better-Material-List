@@ -2,9 +2,7 @@ package com.betterlist.gui;
 
 import com.betterlist.data.MaterialStateManager;
 import fi.dy.masa.litematica.materials.MaterialListEntry;
-import fi.dy.masa.malilib.gui.button.ButtonBase;
 import fi.dy.masa.malilib.gui.button.ButtonGeneric;
-import fi.dy.masa.malilib.gui.button.IButtonActionListener;
 import fi.dy.masa.malilib.gui.widgets.WidgetListEntryBase;
 import fi.dy.masa.malilib.render.GuiContext;
 import net.fabricmc.api.EnvType;
@@ -53,16 +51,13 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
         int bx = x + width - BmlLayoutConstants.CHECKBOX_WIDTH - BmlLayoutConstants.CHECKBOX_MARGIN;
         int by = y + (height - BmlLayoutConstants.CHECKBOX_WIDTH) / 2;
         this.leftCheckbox = new ButtonGeneric(bx, by, BmlLayoutConstants.CHECKBOX_WIDTH, BmlLayoutConstants.CHECKBOX_WIDTH, glyph, new String[0]);
-        this.addButton(this.leftCheckbox, new IButtonActionListener() {
-            @Override
-            public void actionPerformedWithButton(ButtonBase button, int mouseButton) {
-                boolean newState = !MaterialStateManager.isChecked(parent.getChecklistKey(),
-                        WidgetBetterMaterialListEntry.this.leftItemName);
-                MaterialStateManager.setChecked(parent.getChecklistKey(),
-                        WidgetBetterMaterialListEntry.this.leftItemName, newState);
-                WidgetBetterMaterialListEntry.this.leftCheckbox.setDisplayString(newState ? "§a✔" : "§c✖");
-            }
-        });
+        this.addButton(this.leftCheckbox, com.betterlist.util.BmlButtons.leftClick(() -> {
+            boolean newState = !MaterialStateManager.isChecked(parent.getChecklistKey(),
+                    WidgetBetterMaterialListEntry.this.leftItemName);
+            MaterialStateManager.setChecked(parent.getChecklistKey(),
+                    WidgetBetterMaterialListEntry.this.leftItemName, newState);
+            WidgetBetterMaterialListEntry.this.leftCheckbox.setDisplayString(newState ? "§a✔" : "§c✖");
+        }));
     }
 
     private void setupRightEntry(MaterialListEntry entry, int x, int y, int width, int height) {
@@ -77,16 +72,13 @@ public class WidgetBetterMaterialListEntry extends WidgetListEntryBase<MaterialL
         int bx = x + width - BmlLayoutConstants.CHECKBOX_WIDTH - BmlLayoutConstants.CHECKBOX_MARGIN;
         int by = y + (height - BmlLayoutConstants.CHECKBOX_WIDTH) / 2;
         this.rightCheckbox = new ButtonGeneric(bx, by, BmlLayoutConstants.CHECKBOX_WIDTH, BmlLayoutConstants.CHECKBOX_WIDTH, glyph, new String[0]);
-        this.addButton(this.rightCheckbox, new IButtonActionListener() {
-            @Override
-            public void actionPerformedWithButton(ButtonBase button, int mouseButton) {
-                boolean newState = !MaterialStateManager.isChecked(parent.getChecklistKey(),
-                        WidgetBetterMaterialListEntry.this.rightItemName);
-                MaterialStateManager.setChecked(parent.getChecklistKey(),
-                        WidgetBetterMaterialListEntry.this.rightItemName, newState);
-                WidgetBetterMaterialListEntry.this.rightCheckbox.setDisplayString(newState ? "§a✔" : "§c✖");
-            }
-        });
+        this.addButton(this.rightCheckbox, com.betterlist.util.BmlButtons.leftClick(() -> {
+            boolean newState = !MaterialStateManager.isChecked(parent.getChecklistKey(),
+                    WidgetBetterMaterialListEntry.this.rightItemName);
+            MaterialStateManager.setChecked(parent.getChecklistKey(),
+                    WidgetBetterMaterialListEntry.this.rightItemName, newState);
+            WidgetBetterMaterialListEntry.this.rightCheckbox.setDisplayString(newState ? "§a✔" : "§c✖");
+        }));
     }
 
     static String stackBreakdown(int n) {

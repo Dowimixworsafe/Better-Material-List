@@ -155,13 +155,11 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
 
         List<MaterialListEntry> entriesToShow = collectEntriesWithCacheFallback(placements);
         String placementLabel = (placements != null && !placements.isEmpty())
-                ? buildPlacementLabel(placements) : "Brak schematu";
+                ? buildPlacementLabel(placements) : com.betterlist.util.BmlLang.tr("bml.list.no_schematic");
         boolean isCached = lastCollectWasCached;
 
         if (entriesToShow != null && !entriesToShow.isEmpty() && Minecraft.getInstance().player != null) {
-            fi.dy.masa.litematica.materials.MaterialListUtils.updateAvailableCounts(entriesToShow,
-                    Minecraft.getInstance().player);
-            addCachedContainerItems(entriesToShow);
+            applyAvailableCounts(entriesToShow, Minecraft.getInstance().player);
         }
 
         GuiBase.openGui(new GuiBetterMaterialList(placementLabel, entriesToShow, isCached, placements));
@@ -217,6 +215,35 @@ public class InputHandler implements IKeybindProvider, IHotkeyCallback {
 
     public static void clearLastGoodEntries() {
         lastGoodEntries = null;
+    }
+
+    public static void scheduleQuietRecount(List<SchematicPlacement> placements) {
+        Minecraft mc = Minecraft.getInstance();
+        if (placements == null || placements.isEmpty() || mc.player == null || mc.level == null) return;
+        fi.dy.masa.litematica.scheduler.TaskScheduler scheduler =
+                fi.dy.masa.litematica.scheduler.TaskScheduler.getInstanceClient();
+        if (scheduler.hasTask(fi.dy.masa.litematica.scheduler.tasks.TaskCountBlocksPlacement.class)) return;
+        boolean ignoreState =
+                fi.dy.masa.litematica.config.Configs.Generic.MATERIAL_LIST_IGNORE_STATE.getBooleanValue();
+        for (SchematicPlacement p : placements) {
+            if (!p.isEnabled()) continue;
+            MaterialListBase mlb = p.getMaterialList();
+            if (mlb == null) continue;
+            net.minecraft.core.BlockPos origin = p.getOrigin();
+            if (origin == null || !mc.level.hasChunkAt(origin)) continue;
+            scheduler.scheduleTask(
+                    new fi.dy.masa.litematica.scheduler.tasks.TaskCountBlocksPlacement(p, mlb, ignoreState), 20);
+        }
+    }
+
+    public static void applyAvailableCounts(List<MaterialListEntry> entries, net.minecraft.world.entity.player.Player player) {
+        if (entries == null) return;
+        if (com.betterlist.config.ModConfig.COUNT_PLAYER_INVENTORY && player != null) {
+            fi.dy.masa.litematica.materials.MaterialListUtils.updateAvailableCounts(entries, player);
+        } else {
+            for (MaterialListEntry entry : entries) entry.setCountAvailable(0);
+        }
+        addCachedContainerItems(entries);
     }
 
     public static void addCachedContainerItems(List<MaterialListEntry> entries) {

@@ -122,7 +122,9 @@ public class BmlServerNetworking {
                 if (!targetFound) {
                     JsonObject err = new JsonObject();
                     err.addProperty("type", BmlPackets.PARTY_ERROR);
-                    err.addProperty("message", "Gracz " + targetNick + " nie jest online.");
+                    err.addProperty("msgKey", "bml.party.err.not_online");
+                    err.addProperty("arg", targetNick);
+                    err.addProperty("message", "Player " + targetNick + " is not online.");
                     sendToPlayer(sender, err);
                     return;
                 }
@@ -130,7 +132,9 @@ public class BmlServerNetworking {
                 if (ServerPartyManager.isPlayerInAnyParty(targetPlayer.getUUID())) {
                     JsonObject err = new JsonObject();
                     err.addProperty("type", BmlPackets.PARTY_ERROR);
-                    err.addProperty("message", "Gracz " + targetNick + " jest juz w party.");
+                    err.addProperty("msgKey", "bml.party.err.target_in_party");
+                    err.addProperty("arg", targetNick);
+                    err.addProperty("message", "Player " + targetNick + " is already in another party.");
                     sendToPlayer(sender, err);
                     return;
                 }
@@ -138,7 +142,8 @@ public class BmlServerNetworking {
                 if (!ServerPartyManager.partyExists(partyId) && ServerPartyManager.isPlayerInAnyParty(sender.getUUID())) {
                     JsonObject err = new JsonObject();
                     err.addProperty("type", BmlPackets.PARTY_ERROR);
-                    err.addProperty("message", "Nalezysz juz do innej grupy.");
+                    err.addProperty("msgKey", "bml.party.err.you_in_party");
+                    err.addProperty("message", "You already belong to another party.");
                     sendToPlayer(sender, err);
                     return;
                 }

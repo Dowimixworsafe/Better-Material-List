@@ -14,6 +14,7 @@ public class GuiConfigs extends GuiConfigsBase {
 
     // Built lazily so the label follows the in-game language; value saved back on close.
     private fi.dy.masa.malilib.config.options.ConfigBoolean cfgHoverTooltip;
+    private fi.dy.masa.malilib.config.options.ConfigBoolean cfgCountInventory;
 
     public GuiConfigs() {
         super(10, 50, "Better List", null, "betterlist");
@@ -28,7 +29,7 @@ public class GuiConfigs extends GuiConfigsBase {
 
         // Back arrow in the top-left corner — returns to the material list.
         this.addButton(new ButtonGeneric(6, 6, 40, 20, "§e" + com.betterlist.util.BmlLang.tr("bml.gui.back")),
-                (btn, mb) -> InputHandler.openMaterialList());
+                com.betterlist.util.BmlButtons.leftClick(InputHandler::openMaterialList));
     }
 
     @Override
@@ -50,6 +51,14 @@ public class GuiConfigs extends GuiConfigsBase {
                     com.betterlist.util.BmlLang.tr("bml.config.hover_tooltip.comment"));
         }
         configs.add(new ConfigOptionWrapper(this.cfgHoverTooltip));
+
+        if (this.cfgCountInventory == null) {
+            this.cfgCountInventory = new fi.dy.masa.malilib.config.options.ConfigBoolean(
+                    com.betterlist.util.BmlLang.tr("bml.config.count_inventory"),
+                    ModConfig.COUNT_PLAYER_INVENTORY,
+                    com.betterlist.util.BmlLang.tr("bml.config.count_inventory.comment"));
+        }
+        configs.add(new ConfigOptionWrapper(this.cfgCountInventory));
 
         // Localize the hotkey labels/comments shown in the config GUI (getName() stays the
         // English storage key, so saved bindings are unaffected).
@@ -80,6 +89,9 @@ public class GuiConfigs extends GuiConfigsBase {
         // Pull the toggle value back into ModConfig before saving.
         if (this.cfgHoverTooltip != null) {
             ModConfig.SHOW_ITEM_HOVER_TOOLTIP = this.cfgHoverTooltip.getBooleanValue();
+        }
+        if (this.cfgCountInventory != null) {
+            ModConfig.COUNT_PLAYER_INVENTORY = this.cfgCountInventory.getBooleanValue();
         }
         // On close, immediately save the new config to disk.
         ModConfig config = new ModConfig();

@@ -1,5 +1,6 @@
 {
 	"bml.gui.back": "← Wróć",
+	"bml.gui.search_placeholder": "Szukaj przedmiotu...",
 
 	"bml.list.party": "Party",
 	"bml.list.no_server": "Brak serwera",
@@ -22,6 +23,8 @@
 
 	"bml.config.hover_tooltip": "Dymek po najechaniu na item",
 	"bml.config.hover_tooltip.comment": "Pokazuj okienko z informacjami po najechaniu na item na liście materiałów.",
+	"bml.config.count_inventory": "Wliczaj ekwipunek gracza",
+	"bml.config.count_inventory.comment": "Gdy włączone, itemy z Twojego ekwipunku liczą się do „zebrane”. Gdy wyłączone, liczą się tylko śledzone skrzynie.",
 
 	"bml.tip.party": "Otwórz menu party (zaproszenia/synchronizacja ze znajomymi)",
 	"bml.tip.layout": "Zmień układ: 2 kolumny poziomo / pionowo / jedna",
@@ -112,6 +115,19 @@
 	"bml.party.invite_received": "[BetterList] %s zaprasza Cię do party! (Otwórz GUI Better List → Party lub naciśnij O, aby zaakceptować)",
 	"bml.party.disbanded": "[BetterList] Zostałeś rozłączony z Party.",
 
+	"bml.party.err.not_online": "[BetterList] Gracz %s nie jest online.",
+	"bml.party.err.cant_invite_self": "[BetterList] Nie możesz zaprosić samego siebie.",
+	"bml.party.err.target_in_party": "[BetterList] Gracz %s jest już w innej grupie.",
+	"bml.party.err.you_in_party": "[BetterList] Należysz już do innej grupy.",
+	"bml.party.err.only_leader_invite": "[BetterList] Tylko lider grupy może zapraszać.",
+	"bml.party.err.party_gone": "[BetterList] Ta grupa już nie istnieje.",
+	"bml.party.err.no_invite": "[BetterList] Nie masz oczekującego zaproszenia do tej grupy.",
+	"bml.party.err.leave_first": "[BetterList] Najpierw opuść obecną grupę.",
+	"bml.party.err.only_leader_kick": "[BetterList] Tylko lider grupy może wyrzucać graczy.",
+	"bml.party.err.not_in_your_party": "[BetterList] Ten gracz nie jest w twojej grupie.",
+	"bml.party.notice.invite_sent": "[BetterList] Wysłano zaproszenie do %s.",
+	"bml.party.notice.kicked": "[BetterList] Zostałeś wyrzucony z grupy.",
+
 	"bml.highlight.on": "[BetterList] Podświetlono śledzone skrzynie.",
 	"bml.highlight.off": "[BetterList] Wyłączono podświetlenie skrzyń.",
 	"bml.hud.on": "[BetterList] HUD zaznaczonych itemów: WŁ. (zaznacz itemy PPM na liście)",
@@ -122,5 +138,10 @@
 	"bml.sync.sent_placements": "[BetterList] Wysłano %s placement(ów) do party.",
 	"bml.sync.missing_schematic": "[BetterList] Brakuje schematu: %s – skopiuj plik .litematic do folderu schematics/, a potem wczytaj go w Litematice.",
 	"bml.sync.auto_loaded": "[BetterList] Automatycznie załadowano i ustawiono schemat od znajomego: %s",
-	"bml.sync.load_error": "[BetterList] Błąd wczytywania automatycznego z pliku: %s"
+	"bml.sync.load_error": "[BetterList] Błąd wczytywania automatycznego z pliku: %s",
+	"bml.sync.member_missing": "[BetterList] %s nie ma schematu %s — wyślij mu plik.",
+	"bml.party.project": "Projekt party (wybierz schematy)",
+	"bml.party.send_project": "Wyślij wybrane do party",
+	"bml.party.project_sent": "[BetterList] Wysłano projekt (%s schematów) do party.",
+	"bml.party.no_schematics": "Brak wczytanych schematów do wyboru."
 }
