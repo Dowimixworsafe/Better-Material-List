@@ -4,7 +4,6 @@ import com.betterlist.input.InputHandler;
 import com.betterlist.party.FocusManager;
 import fi.dy.masa.litematica.data.DataManager;
 import fi.dy.masa.litematica.materials.MaterialListEntry;
-import fi.dy.masa.litematica.materials.MaterialListUtils;
 import fi.dy.masa.litematica.schematic.placement.SchematicPlacement;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -29,8 +28,8 @@ public final class HudOverlayManager {
 
     public static final int MAX_ROWS = 8;
 
-    /** One HUD row: icon + have / need. */
-    public record Row(ItemStack stack, int have, int need) {}
+    /** One HUD row: icon + have / required. {@code done} means have >= required. */
+    public record Row(ItemStack stack, int have, int required, boolean done) {}
 
     private static volatile boolean enabled = false;
     private static volatile List<Row> rows = new ArrayList<>();      // visible window (≤ MAX_ROWS)
@@ -116,20 +115,20 @@ public final class HudOverlayManager {
             return;
         }
 
-        MaterialListUtils.updateAvailableCounts(entries, mc.player);
-        InputHandler.addCachedContainerItems(entries);
+        InputHandler.applyAvailableCounts(entries, mc.player);
 
         List<MaterialListEntry> targeted = new ArrayList<>();
         for (MaterialListEntry e : entries) {
             String id = BuiltInRegistries.ITEM.getKey(e.getStack().getItem()).toString();
             if (!myTargets.contains(id)) continue;
-            int need = Math.max(0, e.getCountMissing() - e.getCountAvailable());
-            if (need <= 0) continue; // fulfilled — drops off the HUD
+            if (e.getCountMissing() <= 0) continue;
             targeted.add(e);
         }
 
-        // Static order by total required, so rows keep their place as you gather (ties by id).
         targeted.sort((a, b) -> {
+            boolean ad = a.getCountAvailable() >= a.getCountMissing();
+            boolean bd = b.getCountAvailable() >= b.getCountMissing();
+            if (ad != bd) return ad ? 1 : -1;
             int c = Integer.compare(b.getCountTotal(), a.getCountTotal());
             if (c != 0) return c;
             return BuiltInRegistries.ITEM.getKey(a.getStack().getItem()).toString()
@@ -139,8 +138,8 @@ public final class HudOverlayManager {
         List<Row> full = new ArrayList<>(targeted.size());
         for (MaterialListEntry e : targeted) {
             int have = e.getCountAvailable();
-            int need = Math.max(0, e.getCountMissing() - have);
-            full.add(new Row(e.getStack().copy(), have, need));
+            int required = e.getCountMissing();
+            full.add(new Row(e.getStack().copy(), have, required, have >= required));
         }
         allRows = full;
         applyWindow();

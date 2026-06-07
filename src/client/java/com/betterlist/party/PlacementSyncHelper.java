@@ -68,6 +68,39 @@ public class PlacementSyncHelper {
         }
     }
 
+    public static void sendSelectedPlacements(java.util.Collection<String> selectedNames) {
+        if (!PartyManager.isInParty() || selectedNames == null || selectedNames.isEmpty()) return;
+
+        SchematicPlacementManager mgr = DataManager.getSchematicPlacementManager();
+        List<SchematicPlacement> all = mgr.getAllSchematicsPlacements();
+        if (all == null) return;
+
+        int sent = 0;
+        for (SchematicPlacement placement : all) {
+            if (!selectedNames.contains(placement.getName())) continue;
+            sendSinglePlacement(placement, null);
+            sent++;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            mc.player.sendSystemMessage(
+                Component.literal("§a" + com.betterlist.util.BmlLang.tr("bml.party.project_sent", sent)));
+        }
+        LOGGER.info("[BML-PlacementSync] Sent {} selected placement(s) as the party project.", sent);
+    }
+
+    private static void reportMissingSchematic(String schematicName) {
+        if (!PartyManager.isInParty()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+        JsonObject payload = new JsonObject();
+        payload.addProperty("type", BmlPackets.SYNC_SCHEMATIC_MISSING);
+        payload.addProperty("partyId", PartyManager.getPartyId().toString());
+        payload.addProperty("player", mc.player.getGameProfile().name());
+        payload.addProperty("schematicName", schematicName);
+        BmlClientNetworking.sendRaw(payload);
+    }
+
     private static void sendSinglePlacement(SchematicPlacement placement, String targetNick) {
         try {
             net.minecraft.core.BlockPos origin = placement.getOrigin();
@@ -166,6 +199,7 @@ public class PlacementSyncHelper {
             // File missing — ask the user to copy it manually.
             mc.player.sendSystemMessage(
                 Component.literal("§c" + com.betterlist.util.BmlLang.tr("bml.sync.missing_schematic", schematicName)));
+            reportMissingSchematic(schematicName);
 
         } else {
             try {

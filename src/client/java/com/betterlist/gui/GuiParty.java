@@ -32,6 +32,9 @@ public class GuiParty extends GuiBase {
     private final String placementName;
     private static int onlinePlayersPage = 0;
 
+    private final java.util.Set<String> selectedSchematics = new java.util.HashSet<>();
+    private boolean selectionInit = false;
+
     // Geometria panelu.
     private static final int PANEL_W = 300;
     private static final int TOP = 44;
@@ -71,6 +74,12 @@ public class GuiParty extends GuiBase {
                 ? Minecraft.getInstance().player.getGameProfile().name() : "";
     }
 
+    private List<fi.dy.masa.litematica.schematic.placement.SchematicPlacement> adminPlacements() {
+        var mgr = fi.dy.masa.litematica.data.DataManager.getSchematicPlacementManager();
+        var all = mgr.getAllSchematicsPlacements();
+        return all != null ? all : new ArrayList<>();
+    }
+
     // ── Layout (initGui = buttons + editable fields) ───────────────────────────
 
     @Override
@@ -80,9 +89,14 @@ public class GuiParty extends GuiBase {
 
         // Back arrow — top-left corner.
         this.addButton(new ButtonGeneric(6, 6, 40, 20, "§e" + com.betterlist.util.BmlLang.tr("bml.gui.back")),
-                (b, mb) -> InputHandler.openMaterialList());
+                com.betterlist.util.BmlButtons.leftClick(InputHandler::openMaterialList));
 
         if (!BmlClientNetworking.serverSupported) return;
+
+        if (!selectionInit) {
+            for (var p : adminPlacements()) if (p.isEnabled()) selectedSchematics.add(p.getName());
+            selectionInit = true;
+        }
 
         int y = TOP;
 
@@ -92,9 +106,9 @@ public class GuiParty extends GuiBase {
             y += 16; // room for the section header
             for (PartyManager.PendingInvite inv : invites) {
                 this.addButton(new ButtonGeneric(left + PANEL_W - 150, y, 70, 20, "§a" + com.betterlist.util.BmlLang.tr("bml.party.accept")),
-                        (b, mb) -> { PartyManager.acceptInvite(inv.partyId()); reopen(); });
+                        com.betterlist.util.BmlButtons.leftClick(() -> { PartyManager.acceptInvite(inv.partyId()); reopen(); }));
                 this.addButton(new ButtonGeneric(left + PANEL_W - 76, y, 76, 20, "§c" + com.betterlist.util.BmlLang.tr("bml.party.decline")),
-                        (b, mb) -> { PartyManager.declineInvite(inv.partyId()); reopen(); });
+                        com.betterlist.util.BmlButtons.leftClick(() -> { PartyManager.declineInvite(inv.partyId()); reopen(); }));
                 y += ROW;
             }
             y += SECTION_GAP;
@@ -109,10 +123,10 @@ public class GuiParty extends GuiBase {
                 if (!member.equals(self)) {
                     // Sync (anyone can request); Kick admin-only.
                     this.addButton(new ButtonGeneric(left + PANEL_W - 120, y, 56, 18, "§b" + com.betterlist.util.BmlLang.tr("bml.party.sync")),
-                            (b, mb) -> PlacementSyncHelper.requestPlacementsFromPlayer(member));
+                            com.betterlist.util.BmlButtons.leftClick(() -> PlacementSyncHelper.requestPlacementsFromPlayer(member)));
                     if (PartyManager.isAdmin()) {
                         this.addButton(new ButtonGeneric(left + PANEL_W - 60, y, 56, 18, "§c" + com.betterlist.util.BmlLang.tr("bml.party.kick")),
-                                (b, mb) -> { PartyManager.kickPlayer(member); reopen(); });
+                                com.betterlist.util.BmlButtons.leftClick(() -> { PartyManager.kickPlayer(member); reopen(); }));
                     }
                 }
                 y += ROW;
@@ -122,11 +136,37 @@ public class GuiParty extends GuiBase {
             // Leave / Close.
             String leaveText = PartyManager.isAdmin() ? "§c" + com.betterlist.util.BmlLang.tr("bml.party.close") : "§c" + com.betterlist.util.BmlLang.tr("bml.party.leave");
             this.addButton(new ButtonGeneric(left, y, PANEL_W, 20, leaveText),
-                    (b, mb) -> { PartyManager.leaveParty(); reopen(); });
+                    com.betterlist.util.BmlButtons.leftClick(() -> { PartyManager.leaveParty(); reopen(); }));
             y += 20 + SECTION_GAP;
         } else {
             // No party — matches the "You are not in a party" header in the render.
             y += 16 + SECTION_GAP;
+        }
+
+        // ── Party project (admin only) ──
+        if (PartyManager.isInParty() && PartyManager.isAdmin()) {
+            y += 16;
+            var placements = adminPlacements();
+            if (placements.isEmpty()) {
+                y += ROW;
+            } else {
+                for (var p : placements) {
+                    final String name = p.getName();
+                    boolean sel = selectedSchematics.contains(name);
+                    this.addButton(new ButtonGeneric(left, y, PANEL_W, 18, (sel ? "§a✔ " : "§7✖ ") + name),
+                            com.betterlist.util.BmlButtons.leftClick(() -> {
+                        if (!selectedSchematics.remove(name)) selectedSchematics.add(name);
+                        this.initGui();
+                    }));
+                    y += ROW;
+                }
+                this.addButton(new ButtonGeneric(left, y, PANEL_W, 20,
+                        "§b" + com.betterlist.util.BmlLang.tr("bml.party.send_project")),
+                        com.betterlist.util.BmlButtons.leftClick(
+                                () -> PlacementSyncHelper.sendSelectedPlacements(new ArrayList<>(selectedSchematics))));
+                y += 20;
+            }
+            y += SECTION_GAP;
         }
 
         // ── Invite player ──
@@ -134,13 +174,14 @@ public class GuiParty extends GuiBase {
         this.inviteField = new EditBox(this.font, left, y, PANEL_W - 90, 20,
                 Component.literal(com.betterlist.util.BmlLang.tr("bml.party.nick_hint")));
         this.addRenderableWidget(this.inviteField);
-        this.addButton(new ButtonGeneric(left + PANEL_W - 84, y, 84, 20, "§a" + com.betterlist.util.BmlLang.tr("bml.party.invite")), (b, mb) -> {
+        this.addButton(new ButtonGeneric(left + PANEL_W - 84, y, 84, 20, "§a" + com.betterlist.util.BmlLang.tr("bml.party.invite")),
+                com.betterlist.util.BmlButtons.leftClick(() -> {
             if (this.inviteField != null && !this.inviteField.getValue().isBlank()) {
                 PartyManager.sendInvite(this.inviteField.getValue());
                 this.inviteField.setValue("");
                 reopen();
             }
-        });
+        }));
         y += 20 + SECTION_GAP;
 
         // ── Online players (paginated) ──
@@ -154,18 +195,18 @@ public class GuiParty extends GuiBase {
         for (int i = from; i < to; i++) {
             String pName = online.get(i).getProfile().name();
             this.addButton(new ButtonGeneric(left + PANEL_W - 70, y, 70, 18, "§a" + com.betterlist.util.BmlLang.tr("bml.party.invite")),
-                    (b, mb) -> { PartyManager.sendInvite(pName); reopen(); });
+                    com.betterlist.util.BmlButtons.leftClick(() -> { PartyManager.sendInvite(pName); reopen(); }));
             y += ROW;
         }
         if (maxPages > 1) {
-            this.addButton(new ButtonGeneric(left, y, 28, 20, "§e◄"), (b, mb) -> {
+            this.addButton(new ButtonGeneric(left, y, 28, 20, "§e◄"), com.betterlist.util.BmlButtons.leftClick(() -> {
                 if (onlinePlayersPage > 0) onlinePlayersPage--;
                 reopen();
-            });
-            this.addButton(new ButtonGeneric(left + PANEL_W - 28, y, 28, 20, "§e►"), (b, mb) -> {
+            }));
+            this.addButton(new ButtonGeneric(left + PANEL_W - 28, y, 28, 20, "§e►"), com.betterlist.util.BmlButtons.leftClick(() -> {
                 if (onlinePlayersPage < maxPages - 1) onlinePlayersPage++;
                 reopen();
-            });
+            }));
         }
     }
 
@@ -235,6 +276,22 @@ public class GuiParty extends GuiBase {
         } else {
             sectionHeader(ctx, left, y, "§7" + com.betterlist.util.BmlLang.tr("bml.party.not_in_party"));
             y += 16 + SECTION_GAP;
+        }
+
+        // ── Party project (admin only) ──
+        if (PartyManager.isInParty() && PartyManager.isAdmin()) {
+            sectionHeader(ctx, left, y, "§a" + com.betterlist.util.BmlLang.tr("bml.party.project"));
+            y += 16;
+            var placements = adminPlacements();
+            if (placements.isEmpty()) {
+                ctx.drawString(this.font, "§7" + com.betterlist.util.BmlLang.tr("bml.party.no_schematics"),
+                        left + 4, y + 5, 0xFFFFFFFF, false);
+                y += ROW;
+            } else {
+                y += ROW * placements.size();
+                y += 20;
+            }
+            y += SECTION_GAP;
         }
 
         // ── Invite player ──

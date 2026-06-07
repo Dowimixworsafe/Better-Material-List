@@ -111,6 +111,15 @@ public class BmlClientNetworking {
             }
             case BmlPackets.SYNC_PLACEMENT       -> PlacementSyncHelper.applyPlacement(json);
             case BmlPackets.SYNC_PLACEMENT_REQUEST -> PlacementSyncHelper.handlePlacementRequest(json);
+            case BmlPackets.SYNC_SCHEMATIC_MISSING -> {
+                String player = json.get("player").getAsString();
+                String schem  = json.get("schematicName").getAsString();
+                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+                if (mc.player != null) {
+                    mc.player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
+                            "§e" + com.betterlist.util.BmlLang.tr("bml.sync.member_missing", player, schem)));
+                }
+            }
             case BmlPackets.SYNC_FULL_STATE      -> applyFullState(json);
             case BmlPackets.PARTY_TARGET_UPDATE  -> {
                 String player = json.get("player").getAsString();

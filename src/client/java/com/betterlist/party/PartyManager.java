@@ -119,16 +119,33 @@ public class PartyManager {
             case BmlPackets.PARTY_UPDATE        -> onPartyUpdate(json);
             case BmlPackets.PARTY_LEAVE         -> onPartyLeave(json);
             case BmlPackets.PARTY_ERROR         -> onPartyError(json);
+            case BmlPackets.PARTY_NOTICE        -> onPartyNotice(json);
             default -> LOGGER.warn("[BML-Party] Unhandled packet type: {}", type);
         }
     }
 
-    private static void onPartyError(JsonObject json) {
-        String msg = json.get("message").getAsString();
+    private static void onPartyError(JsonObject json)  { showServerMessage(json, "§c"); }
+    private static void onPartyNotice(JsonObject json) { showServerMessage(json, "§a"); }
+
+    /**
+     * Renders a server-originated party message. Modern servers send a translation
+     * {@code msgKey} (+ optional {@code arg}); the lang value carries the {@code [BetterList]}
+     * brand prefix. Older servers send only a raw {@code message} — we add the prefix in code.
+     */
+    private static void showServerMessage(JsonObject json, String color) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null) {
-            mc.player.sendSystemMessage(Component.literal("§c[BML] " + msg));
+        if (mc.player == null) return;
+        String text;
+        if (json.has("msgKey")) {
+            String key = json.get("msgKey").getAsString();
+            String arg = json.has("arg") ? json.get("arg").getAsString() : "";
+            text = com.betterlist.util.BmlLang.tr(key, arg);
+        } else if (json.has("message")) {
+            text = "[BetterList] " + json.get("message").getAsString();
+        } else {
+            return;
         }
+        mc.player.sendSystemMessage(Component.literal(color + text));
     }
 
     private static void onInviteReceived(JsonObject json) {

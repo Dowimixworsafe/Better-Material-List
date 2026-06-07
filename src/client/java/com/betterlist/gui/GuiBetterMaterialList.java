@@ -192,14 +192,14 @@ public class GuiBetterMaterialList
                 ? (com.betterlist.party.PartyManager.isInParty() ? "§a👥 " + com.betterlist.util.BmlLang.tr("bml.list.party") : "§e👥 " + com.betterlist.util.BmlLang.tr("bml.list.party"))
                 : "§7👥 " + com.betterlist.util.BmlLang.tr("bml.list.no_server");
         this.btnParty = new ButtonGeneric(startX, 6, 78, 20, partyText);
-        this.addButton(this.btnParty,
-                (b, mb) -> fi.dy.masa.malilib.gui.GuiBase.openGui(new GuiParty(this.placementName)));
+        this.addButton(this.btnParty, com.betterlist.util.BmlButtons.leftClick(
+                () -> fi.dy.masa.malilib.gui.GuiBase.openGui(new GuiParty(this.placementName))));
 
         String layoutIcon = globalLayoutMode == LayoutMode.SINGLE ? "1-Col"
                 : (globalLayoutMode == LayoutMode.TWO_VERTICAL ? "2-Vert" : "2-Horiz");
         this.btnLayout = new ButtonGeneric(startX + 82, 6, 54, 20, layoutIcon);
         ButtonGeneric btnLayout = this.btnLayout;
-        this.addButton(btnLayout, (b, mb) -> {
+        this.addButton(btnLayout, com.betterlist.util.BmlButtons.leftClick(() -> {
             if      (globalLayoutMode == LayoutMode.TWO_HORIZONTAL) globalLayoutMode = LayoutMode.TWO_VERTICAL;
             else if (globalLayoutMode == LayoutMode.TWO_VERTICAL)   globalLayoutMode = LayoutMode.SINGLE;
             else                                                      globalLayoutMode = LayoutMode.TWO_HORIZONTAL;
@@ -207,36 +207,36 @@ public class GuiBetterMaterialList
                     : (globalLayoutMode == LayoutMode.TWO_VERTICAL ? "2-Vert" : "2-Horiz");
             btnLayout.setDisplayString(icon);
             if (this.getListWidget() != null) this.getListWidget().refreshEntries();
-        });
+        }));
 
         // Auto-refresh toggle
         this.btnAutoRefresh = new ButtonGeneric(startX + 140, 6, 60, 20,
                 globalAutoRefresh ? "§a" + com.betterlist.util.BmlLang.tr("bml.list.auto_on") : "§c" + com.betterlist.util.BmlLang.tr("bml.list.auto_off"));
-        this.addButton(this.btnAutoRefresh, (b, mb) -> {
+        this.addButton(this.btnAutoRefresh, com.betterlist.util.BmlButtons.leftClick(() -> {
             globalAutoRefresh = !globalAutoRefresh;
             autoRefreshTick = 0;
             this.btnAutoRefresh.setDisplayString(globalAutoRefresh ? "§a" + com.betterlist.util.BmlLang.tr("bml.list.auto_on") : "§c" + com.betterlist.util.BmlLang.tr("bml.list.auto_off"));
-        });
+        }));
 
         // Manual refresh (triggers Litematica task — shows notification, but user-initiated)
         this.btnRefresh = new ButtonGeneric(startX + 204, 6, 20, 20, "⟳");
-        this.addButton(this.btnRefresh, (b, mb) -> triggerFullRefresh());
+        this.addButton(this.btnRefresh, com.betterlist.util.BmlButtons.leftClick(this::triggerFullRefresh));
 
         // Chests
         this.btnChests = new ButtonGeneric(startX + 228, 6, 68, 20, "   §b" + com.betterlist.util.BmlLang.tr("bml.list.chests"));
-        this.addButton(this.btnChests,
-                (b, mb) -> fi.dy.masa.malilib.gui.GuiBase.openGui(new GuiBmlChests(this.placementName)));
+        this.addButton(this.btnChests, com.betterlist.util.BmlButtons.leftClick(
+                () -> fi.dy.masa.malilib.gui.GuiBase.openGui(new GuiBmlChests(this.placementName))));
 
         // Schematics folder
         this.btnSchematics = new ButtonGeneric(startX + 300, 6, 90, 20, "   §e" + com.betterlist.util.BmlLang.tr("bml.list.schematics"));
-        this.addButton(this.btnSchematics, (b, mb) -> openSchematicsFolder());
+        this.addButton(this.btnSchematics, com.betterlist.util.BmlButtons.leftClick(this::openSchematicsFolder));
 
         // Settings & Clear Cache (top-right)
         this.btnSettings = new ButtonGeneric(startX + guiWidth - 126, 6, 62, 20, "§e" + com.betterlist.util.BmlLang.tr("bml.list.settings"));
-        this.addButton(this.btnSettings,
-                (b, mb) -> fi.dy.masa.malilib.gui.GuiBase.openGui(new GuiConfigs()));
+        this.addButton(this.btnSettings, com.betterlist.util.BmlButtons.leftClick(
+                () -> fi.dy.masa.malilib.gui.GuiBase.openGui(new GuiConfigs())));
         this.btnCache = new ButtonGeneric(startX + guiWidth - 60, 6, 60, 20, "§c🗑 " + com.betterlist.util.BmlLang.tr("bml.list.cache"));
-        this.addButton(this.btnCache, (b, mb) -> clearCache());
+        this.addButton(this.btnCache, com.betterlist.util.BmlButtons.leftClick(this::clearCache));
 
         // Bottom bar: search on its own row when narrow, filters + focus always on one row
         int bottomY = this.getScreenHeight() - 26;
@@ -245,7 +245,8 @@ public class GuiBetterMaterialList
         int row2Y = bottomY;
 
         if (this.searchField == null) {
-            this.searchField = new EditBox(this.font, startX, row1Y, 120, 20, Component.literal("Search item..."));
+            this.searchField = new EditBox(this.font, startX, row1Y, 120, 20,
+                    Component.literal(com.betterlist.util.BmlLang.tr("bml.gui.search_placeholder")));
             this.searchField.setResponder(text -> {
                 globalSearchText = text;
                 if (this.getListWidget() != null) this.getListWidget().refreshEntries();
@@ -261,28 +262,28 @@ public class GuiBetterMaterialList
         int filterX = twoRows ? startX : startX + 130;
         this.btnPlacedCheck = new ButtonGeneric(filterX, row2Y, 56, 20,
                 globalHideFullyPlaced ? "   §a" + com.betterlist.util.BmlLang.tr("bml.list.on") : "   §c" + com.betterlist.util.BmlLang.tr("bml.list.off"));
-        this.addButton(btnPlacedCheck, (b, mb) -> {
+        this.addButton(btnPlacedCheck, com.betterlist.util.BmlButtons.leftClick(() -> {
             globalHideFullyPlaced = !globalHideFullyPlaced;
             btnPlacedCheck.setDisplayString(globalHideFullyPlaced ? "   §a" + com.betterlist.util.BmlLang.tr("bml.list.on") : "   §c" + com.betterlist.util.BmlLang.tr("bml.list.off"));
             if (this.getListWidget() != null) this.getListWidget().refreshEntries();
-        });
+        }));
 
         this.btnStoredCheck = new ButtonGeneric(filterX + 60, row2Y, 56, 20,
                 globalHideFullyStored ? "   §a" + com.betterlist.util.BmlLang.tr("bml.list.on") : "   §c" + com.betterlist.util.BmlLang.tr("bml.list.off"));
-        this.addButton(btnStoredCheck, (b, mb) -> {
+        this.addButton(btnStoredCheck, com.betterlist.util.BmlButtons.leftClick(() -> {
             globalHideFullyStored = !globalHideFullyStored;
             btnStoredCheck.setDisplayString(globalHideFullyStored ? "   §a" + com.betterlist.util.BmlLang.tr("bml.list.on") : "   §c" + com.betterlist.util.BmlLang.tr("bml.list.off"));
             if (this.getListWidget() != null) this.getListWidget().refreshEntries();
-        });
+        }));
 
         this.btnChecked = new ButtonGeneric(filterX + 120, row2Y, 70, 20,
                 globalHideChecked ? "§b✔ §a" + com.betterlist.util.BmlLang.tr("bml.list.on") : "§b✔ §c" + com.betterlist.util.BmlLang.tr("bml.list.off"));
         ButtonGeneric btnChecked = this.btnChecked;
-        this.addButton(btnChecked, (b, mb) -> {
+        this.addButton(btnChecked, com.betterlist.util.BmlButtons.leftClick(() -> {
             globalHideChecked = !globalHideChecked;
             btnChecked.setDisplayString(globalHideChecked ? "§b✔ §a" + com.betterlist.util.BmlLang.tr("bml.list.on") : "§b✔ §c" + com.betterlist.util.BmlLang.tr("bml.list.off"));
             if (this.getListWidget() != null) this.getListWidget().refreshEntries();
-        });
+        }));
 
         // Focus buttons — merged onto the filter row. Shown solo too (targeting is local).
         this.btnFocusMaster = null;
@@ -291,25 +292,27 @@ public class GuiBetterMaterialList
         if (hasFocusBar()) {
             int fbx = filterX + 198; // filterX + Grass(56) + gap(4) + Chest(56) + gap(4) + ✔(70) + gap(8)
             this.btnFocusMaster = new ButtonGeneric(fbx, row2Y, 84, 20, focusModeLabel());
-            this.addButton(this.btnFocusMaster, (b, mb) -> {
+            this.addButton(this.btnFocusMaster, com.betterlist.util.BmlButtons.leftClick(() -> {
                 com.betterlist.party.FocusManager.cycleFocusMode();
                 this.btnFocusMaster.setDisplayString(focusModeLabel());
-            });
+            }));
 
             this.btnPlayers = new ButtonGeneric(fbx + 88, row2Y, 72, 20, "§e" + com.betterlist.util.BmlLang.tr("bml.list.players") + " §7▾");
-            this.addButton(this.btnPlayers, (b, mb) -> showPlayerDropdown = !showPlayerDropdown);
+            this.addButton(this.btnPlayers, com.betterlist.util.BmlButtons.leftClick(() -> showPlayerDropdown = !showPlayerDropdown));
 
             this.btnClearTargets = new ButtonGeneric(fbx + 164, row2Y, 64, 20,
                     "§c✖ " + com.betterlist.util.BmlLang.tr("bml.list.clear_targets"));
-            this.addButton(this.btnClearTargets, (b, mb) -> {
+            this.addButton(this.btnClearTargets, com.betterlist.util.BmlButtons.leftClick(() -> {
                 com.betterlist.party.FocusManager.clearMyTargets();
                 com.betterlist.data.HudOverlayManager.recompute();
                 if (com.betterlist.party.PartyManager.isInParty())
                     com.betterlist.network.BmlClientNetworking.sendTargetUpdate();
                 if (this.getListWidget() != null) this.getListWidget().refreshEntries();
-            });
+            }));
         }
     }
+
+    public static boolean isAutoRefreshEnabled() { return globalAutoRefresh; }
 
     private void triggerFullRefresh() {
         if (this.placements == null) return;
@@ -776,6 +779,7 @@ public class GuiBetterMaterialList
             autoRefreshTick++;
             if (autoRefreshTick >= AUTO_REFRESH_INTERVAL) {
                 autoRefreshTick = 0;
+                InputHandler.scheduleQuietRecount(this.placements);
                 silentRefresh();
             }
         }
@@ -791,8 +795,7 @@ public class GuiBetterMaterialList
         List<MaterialListEntry> fresh = InputHandler.collectEntriesWithCacheFallback(this.placements);
         if (fresh == null || fresh.isEmpty()) return;
         if (Minecraft.getInstance().player != null) {
-            MaterialListUtils.updateAvailableCounts(fresh, Minecraft.getInstance().player);
-            InputHandler.addCachedContainerItems(fresh);
+            InputHandler.applyAvailableCounts(fresh, Minecraft.getInstance().player);
         }
         this.materialList = fresh;
         if (this.getListWidget() != null) this.getListWidget().refreshEntries();
@@ -808,8 +811,7 @@ public class GuiBetterMaterialList
             List<MaterialListEntry> fresh = InputHandler.collectMaterialsFromPlacements(this.placements);
             if (fresh != null && !fresh.isEmpty()) { // don't blank a good list with an empty result
                 if (Minecraft.getInstance().player != null) {
-                    MaterialListUtils.updateAvailableCounts(fresh, Minecraft.getInstance().player);
-                    InputHandler.addCachedContainerItems(fresh);
+                    InputHandler.applyAvailableCounts(fresh, Minecraft.getInstance().player);
                 }
                 this.materialList = fresh;
             }

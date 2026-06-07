@@ -54,6 +54,8 @@ public class ExampleModClient implements ClientModInitializer {
 	// Recompute the targeted-items HUD (when enabled) every ~1s.
 	private static int hudTick = 0;
 	private static final int HUD_INTERVAL = 20;
+	private static int autoRecountTick = 0;
+	private static final int AUTO_RECOUNT_INTERVAL = 200;
 
 	// Last dimension seen, to detect an in-place world swap (which does NOT fire DISCONNECT).
 	private static String lastDimensionId = null;
@@ -171,6 +173,14 @@ public class ExampleModClient implements ClientModInitializer {
 				HudOverlayManager.recompute();
 			}
 
+			if (HudOverlayManager.isEnabled() && client.screen == null
+					&& com.betterlist.gui.GuiBetterMaterialList.isAutoRefreshEnabled()
+					&& ++autoRecountTick >= AUTO_RECOUNT_INTERVAL) {
+				autoRecountTick = 0;
+				com.betterlist.input.InputHandler.scheduleQuietRecount(
+						fi.dy.masa.litematica.data.DataManager.getSchematicPlacementManager().getAllSchematicsPlacements());
+			}
+
 			if (!BmlClientNetworking.serverSupported) return;
 			if (!PartyManager.isInParty()) return;
 			if (client.level == null) return;
@@ -228,7 +238,7 @@ public class ExampleModClient implements ClientModInitializer {
 		String title = "§a" + com.betterlist.util.BmlLang.tr("bml.hud.title") + "§e" + arrows;
 		int maxTextW = font.width(title);
 		for (HudOverlayManager.Row r : rows) {
-			maxTextW = Math.max(maxTextW, font.width(r.have() + " / " + (r.have() + r.need())));
+			maxTextW = Math.max(maxTextW, font.width(Math.min(r.have(), r.required()) + " / " + r.required()));
 		}
 		int panelW = pad + iconW + 4 + maxTextW + pad;
 		int panelH = pad + 12 + rows.size() * rowH + pad;
@@ -247,9 +257,10 @@ public class ExampleModClient implements ClientModInitializer {
 			ItemStack stack = r.stack();
 			ctx.renderItem(stack, x + pad, ry);
 			ctx.renderItemDecorations(font, stack, x + pad, ry);
-			int total = r.have() + r.need();
-			// have/total.
-			String txt = "§f" + r.have() + " §7/ §f" + total;
+			int shown = Math.min(r.have(), r.required());
+			String txt = r.done()
+					? "§a" + shown + " §7/ §a" + r.required()
+					: "§f" + shown + " §7/ §f" + r.required();
 			ctx.drawString(font, txt, x + pad + iconW + 4, ry + (iconW - 8) / 2, 0xFFFFFFFF, false);
 			ry += rowH;
 		}
